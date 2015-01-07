@@ -1,24 +1,14 @@
 # Foundation/PG
 
+A clojure data access library for postgresql.
 
 
-
-- unit test with-rs
-
-- break param settign into different namespace
-- clean up and unit test current functionality
-+ map instants/timestamps
-- sort out return from inserts that don't have generated keys
-- handle insert of sequence of maps
-- handle vector based insert format
-- delete with where clause
-- update with where clause
+Status: Work in Progress, hardly anything functional.
 
 
 
 
-
-Goals
+## Goals
   Focus on postgresql support only
   Easy to use correctly
   Support extended postgresql datatypes (eg arrays and json)
@@ -33,6 +23,17 @@ Goals
 
 
 ## TODO/Questions
+
+- unit test with-rs
+- break param settign into different namespace
+- clean up and unit test current functionality
++ map instants/timestamps
+- sort out return from inserts that don't have generated keys
+- handle insert of sequence of maps
+- handle vector based insert format
+- delete with where clause
+- update with where clause
+
 
 How to support postgres arrays as well as lists of items?
 
