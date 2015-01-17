@@ -16,6 +16,7 @@ Status: Work in Progress, hardly anything functional.
 
 ## Features
 - automatic conversion from dash to underscore and back
+- upper/lower casing is ignored, rather than automatically being lower cased.
 - automatic conversion of java.time.Instant to java.sql.timestamp
 
 
@@ -25,7 +26,7 @@ Status: Work in Progress, hardly anything functional.
 ## TODO/Questions
 
 - unit test with-rs
-- break param settign into different namespace
+- break param setting into different namespace
 - clean up and unit test current functionality
 + map instants/timestamps
 - sort out return from inserts that don't have generated keys
@@ -38,8 +39,6 @@ Status: Work in Progress, hardly anything functional.
 How to support postgres arrays as well as lists of items?
 
 
-Is transparent pooling inclusion a good thing?
-Should connection pooling be included by default?
 
 
 I wonder if we could do a select/diff and issue only changed columns as updates?

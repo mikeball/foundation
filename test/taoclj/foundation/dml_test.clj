@@ -50,8 +50,8 @@
   ))
 
 
-(to-sql-update :users [:name] [:id :id2]
-)
+;; (to-sql-update :users [:name] [:id :id2]
+;; )
 
 
 
@@ -59,8 +59,8 @@
 
 
 
-(run-tests *ns*
-)
+;; (run-tests *ns*
+;; )
 
 
 
