@@ -1,14 +1,17 @@
 (ns taoclj.foundation
   (:require [taoclj.foundation.dml :refer [to-sql-insert]]
-            [taoclj.foundation.mappings :refer [from-db-name]])
-  (:import [java.sql Statement Timestamp]
-           [com.zaxxer.hikari HikariDataSource]))
+            [taoclj.foundation.mappings :refer [from-db-name]]
+            [taoclj.foundation.datasources :as datasources])
+  (:import [java.sql Statement Timestamp] ))
+
+
+
 
 
 
 
 (defn read-resultset
-  ([^java.sql.ResultSet rs] (read-resultset rs :maps))
+  ([^java.sql.ResultSet rs] (read-resultset rs nil))
   ([^java.sql.ResultSet rs result-format]
 
     (let [rsmeta  (.getMetaData rs)
@@ -17,9 +20,8 @@
           columns (map from-db-name
                        (map #(.getColumnLabel rsmeta %) idxs) )
 
-          dup-columns
-                (or (apply distinct? columns)
-                    (throw (Exception. "ResultSet must have unique column names")))
+          dups    (or (apply distinct? columns)
+                      (throw (Exception. "ResultSet must have unique column names")))
 
           get-row-vals (fn [] (map (fn [^Integer i]
                                      ; eventually map all types here...
@@ -27,15 +29,13 @@
 
           read-rows (fn readrow []
                         (when (.next rs)
-                          (if (= result-format :vectors)
+                          (if (= result-format :rows)
                             (cons (vec (get-row-vals)) (readrow))
                             (cons (zipmap columns (get-row-vals)) (readrow)))))]
 
-      (if (= result-format :vectors)
+      (if (= result-format :rows)
         (cons (vec columns) (read-rows))
-        (read-rows))
-
-      )))
+        (read-rows)) )))
 
 
 
@@ -45,42 +45,20 @@
                     (let [rs (.getResultSet statement)]
                       (cons (read-resultset rs result-format)
                             (if (.getMoreResults statement)
-                              (readrs))
+                              (readrs)))))
 
-                          ))) ]
+        results   (read-sets)]
 
-    (read-sets)
-
-    ))
-
-
-
-
-
-(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-    (execute cnx "select 'ehlo1' as msg_aaa; select 'ehlo2' as msg_bbb;")
-  )
+    (if (= 1 (count results))
+      (first results)
+      results )))
 
 
 
 
-
-
-;; ; :maps single result set
-;; '({:msg "hi"} {:msg "ehlo"}) ; sequential with maps
-
-;; ; :vectors single result set
-;; '([:msg] ["hi"] ["ehlo"])
-
-
-;; ; :maps multiple results
-;; '( ({:msg "hi"}  {:msg "ehlo"})
-;;    ({:msg "hi2"} {:msg "ehlo2"}))
-
-
-;; ; :vectors multiple results
-;; '( ([:msg1] ["hi1"] ["ehlo1"])
-;;    ([:msg2] ["hi2"] ["ehlo2"])
+;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;;     (execute cnx "select 'ehlo1' as msg_aaa; select 'ehlo2' as msg_bbb;")
+;;   )
 
 
 
@@ -92,6 +70,7 @@
 
 
 
+; add ability to parameterize a single query...
 (defn execute
   ([cnx sql] (execute [] cnx sql))
   ([rs cnx sql]
@@ -100,21 +79,8 @@
          has-result (.execute statement sql)]
 
      (if-not has-result ; was a result set returned?
-       (do (.close statement)
-           true)
-
-       ;otherwise we have a result set to load!
-       (read-resultsets statement :maps)
-
-
-;;        [:get-resultset=
-;;         (doall (resultset-seq (.getResultSet statement)))
-;;         :get-more-results=
-;;         (.getMoreResults statement)
-;;         :get-resultset2=
-;;         (doall (resultset-seq (.getResultSet statement))) ]
-
-  ))))
+       (do (.close statement) true) ; return some metadata??
+       (read-resultsets statement nil)))))
 
 
 
@@ -141,33 +107,33 @@
 
 
 
-;; ; *** parameter mappings *********************
+; *** parameter mappings *********************
 
-;; ; TODO: figure out way to test mappings??
-;; (defn- set-parameter-value! [^Statement statement ^Long position value]
-;;   ; (println "parameter cls = " (class value))
-;;   (if value
-;;     (let [cls (class value)]
-;;       (cond (= cls java.lang.String)  (.setString statement position value)
-;;             (= cls java.lang.Integer) (.setInt statement position value)
-;;             (= cls java.lang.Long)    (.setLong statement position value)
-;;             (= cls java.time.Instant) (.setTimestamp statement position
-;;                                                      (Timestamp/from value))
-;;             :default
-;;             (throw (Exception. "Parameter type not mapped!"))))))
-
-
-;; ; (class (java.sql.Timestamp/from (Instant/now)))
+; TODO: figure out way to test mappings??
+(defn- set-parameter-value! [^Statement statement ^Long position value]
+  ; (println "parameter cls = " (class value))
+  (if value
+    (let [cls (class value)]
+      (cond (= cls java.lang.String)  (.setString statement position value)
+            (= cls java.lang.Integer) (.setInt statement position value)
+            (= cls java.lang.Long)    (.setLong statement position value)
+            (= cls java.time.Instant) (.setTimestamp statement position
+                                                     (Timestamp/from value))
+            :default
+            (throw (Exception. "Parameter type not mapped!"))))))
 
 
-;; (defn- set-parameter-values! [^Statement statement column-names data]
-;;   ; (println "now setting parameter values...")
-;;   (doall
-;;     (map (fn [col]
-;;            (let [position (+ 1 (.indexOf column-names col))
-;;                  value (col data)]
-;;              (set-parameter-value! statement position value) ))
-;;          column-names)))
+; (class (java.sql.Timestamp/from (Instant/now)))
+
+
+(defn- set-parameter-values! [^Statement statement column-names data]
+  ; (println "now setting parameter values...")
+  (doall
+    (map (fn [col]
+           (let [position (+ 1 (.indexOf column-names col))
+                 value (col data)]
+             (set-parameter-value! statement position value) ))
+         column-names)))
 
 
 
@@ -197,81 +163,109 @@
 ;; ; throwing exceptions if any problems are encountered. We do this rather than
 ;; ; attempting to validate an entire query set before proceeding. Performance/Memory!
 
-;; (defn insert [rs cnx table-name data]
-;;   ; (println "data = " data)
+(defn insert [rs cnx table-name data]
+  ; (println "data = " data)
 
-;;   ; data can be
-;;     ; 1 - a single map with column names/values
-;;     ; 2 - a vector of maps
-;;     ; 3 - a vector of vectors first vector is columns, following are values
-;;     ; 4 - a function returning any of the above
+  ; data can be
+    ; 1 - a single map with column names/values
+    ; 2 - a vector of maps
+    ; 3 - a vector of vectors first vector is columns, following are values
+    ; 4 - a function returning any of the above
 
-;;   (let [resolved-data (cond (map? data) data
-;;                             ; todo handle vector data
-;;                             (ifn? data) (data rs)
-;;                             :default    (throw
-;;                                           (Exception. "Passed transform not valid!")))]
-
-
-;;     ; handle multiple items to insert
+  (let [resolved-data (cond (map? data) data
+                            ; todo handle vector data
+                            (ifn? data) (data rs)
+                            :default    (throw
+                                          (Exception. "Passed transform not valid!")))]
 
 
-;;     (let [column-names (keys resolved-data)
-;;           sql       (to-sql-insert table-name column-names 1)
-;;           statement (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
+    ; handle multiple items to insert
 
 
-;;       (set-parameter-values! statement column-names resolved-data)
-
-;;         (let [rowcount       (.executeUpdate statement)
-;;               generated-keys (.getGeneratedKeys statement)
-;;               has-keys       (.next generated-keys)
-;;               keys-meta      (.getMetaData generated-keys)
-;;               generated-id   (.getObject generated-keys 1)]
+    (let [column-names (keys resolved-data)
+          sql       (to-sql-insert table-name column-names 1)
+          statement (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
 
 
-;;           (.close statement)
-;;           (conj rs generated-id)
+      (set-parameter-values! statement column-names resolved-data)
 
-;;   ;;         [rowcount
-;;   ;;          (.getObject generated-keys 1) ; id column
-;;   ;;          (.getObject generated-keys 2) ; name column
-;;   ;;          (.getColumnName keys-meta 1)
-;;   ;;          (.getColumnType keys-meta 1)
-;;   ;;          (.isAutoIncrement keys-meta 1)]
-;;   ) )) )
+        (let [rowcount       (.executeUpdate statement)
+              generated-keys (.getGeneratedKeys statement)
+              has-keys       (.next generated-keys)
+              keys-meta      (.getMetaData generated-keys)
+              generated-id   (.getObject generated-keys 1)]
 
 
+          (.close statement)
+          (conj rs generated-id)
+
+  ;;         [rowcount
+  ;;          (.getObject generated-keys 1) ; id column
+  ;;          (.getObject generated-keys 2) ; name column
+  ;;          (.getColumnName keys-meta 1)
+  ;;          (.getColumnType keys-meta 1)
+  ;;          (.isAutoIncrement keys-meta 1)]
+  ) )) )
 
 
 
-;; ; *** trx->  *********************
-;; (defmacro trx-> [db & statements]
-;;   (let [cnx        (gensym "cnx")
-;;         ex         (gensym "ex")
-;;         result-set (gensym "result-set")
-;;         transform (fn [statement]
-;;                     (concat [(first statement) cnx] (rest statement)))
-;;         full-statements (map transform statements)]
 
-;;     `(let [~cnx (try (.getConnection ~db)
-;;                      (catch Exception ~ex nil))]
-;;        (if-not ~cnx false
-;;           (try
-;;             (.setAutoCommit ~cnx false)
 
-;;             (let [~result-set (-> []
-;;                                   ~@full-statements)]
-;;               (.commit ~cnx)
-;;               ~result-set)
+; *** trx->  *********************
+(defmacro trx-> [db & statements]
+  (let [cnx        (gensym "cnx")
+        ex         (gensym "ex")
+        result-set (gensym "result-set")
+        transform (fn [statement]
+                    (concat [(first statement) cnx] (rest statement)))
+        full-statements (map transform statements)]
 
-;;             (catch Exception ~ex
-;;               (.rollback ~cnx)
-;;               (println ~ex)
-;;               false)
+    `(let [~cnx (try (.getConnection ~db)
+                     (catch Exception ~ex nil))]
+       (if-not ~cnx false
+          (try
+            (.setAutoCommit ~cnx false)
 
-;;             (finally
-;;               (.close ~cnx)))))))
+            (let [~result-set (-> []
+                                  ~@full-statements)]
+              (.commit ~cnx)
+              ~result-set)
+
+            (catch Exception ~ex
+              (.rollback ~cnx)
+              (println ~ex)
+              false)
+
+            (finally
+              (.close ~cnx)))))))
+
+
+(defmacro qry-> [db & statements]
+  (let [cnx             (gensym "cnx")
+        result-set      (gensym "result-set")
+        transform       (fn [statement]
+                          (concat [(first statement) cnx] (rest statement)))
+        full-statements (map transform statements)]
+
+    `(with-open [~cnx (.getConnection ~db)]
+
+       (let [~result-set (-> [] ~@full-statements)]
+         ~result-set)
+
+       )))
+
+
+; (qry-> taoclj.foundation.tests-config/tests-db
+;       (execute "SELECT id, first_name FROM insert_single_record;"))
+
+
+
+
+
+
+
+
+
 
 
 
@@ -334,13 +328,6 @@
 
 
 
-;; ; *** result-rs *********************
-
-;; (defn first-result [rs _]
-;;   (first rs))
-
-;; (defn nth-result [rs _ n]
-;;   (nth rs n))
 
 
 
@@ -351,68 +338,11 @@
 ;; ; https://github.com/clojure/java.jdbc/blob/master/src/main/clojure/clojure/java/jdbc.clj#L362
 
 
-;; (defn execute
-;;   ([cnx sql] (execute [] cnx sql))
-;;   ([rs cnx sql]
-
-;;    (let [statement  (.createStatement cnx)
-;;          has-result (.execute statement sql)]
-
-;;      (if-not has-result ; was a result set returned?
-;;        (do (.close statement)
-;;            true)
-
-;;        ;otherwise we have a result set to load!
-;;        :todo-load-result-set)
-
-
-
-;;      ; (conj rs generated-id)
-
-;; ;;      (let [rowcount       (.executeUpdate statement)
-;; ;;               generated-keys (.getGeneratedKeys statement)
-;; ;;               has-keys       (.next generated-keys)
-;; ;;               keys-meta      (.getMetaData generated-keys)
-;; ;;               generated-id   (.getObject generated-keys 1)]
-;; ;;         )
-
-;;      ) ) )
-
-
-;; (with-open [cnx (.getConnection datasource)]
-;;   (execute cnx "update users set name='Bill4' where id=192;"))
-
-
-;; (with-open [cnx (.getConnection datasource)]
-;;   (execute cnx "select * from users;"))
 
 
 
 
-;; (loop [nxt (.next rs), results nil]
 
-;;   (if (not nxt) ; no more results
-;;     (if (nil? results) true ; if no results at all were returned, query was a success
-
-;;       ; otherwise we return the results
-;;       results)
-
-;;     ; we have a result, read it into a map and append to results
-
-
-;;     (recur (.next rs)
-
-;;            (if-not results
-;;              (conj [] (read-result rs))
-;;              (conj results (read-result rs)))
-;;     ) ))
-
-
-;; (loop [char (readChar)]
-;;    (if (= char delimiter)
-;;        '()
-;;        (do (some-processing)
-;;            (recur (readChar)))))
 
 
 ;; (execute datasource "create table ...")
@@ -570,54 +500,72 @@
 
 
 
-;; ; Complex DELETE/UPDATE are pushed to sql files!
 
 
 
 
-
-;; ; How to handle additional types/mappings
-;; ; java.time.Instant   -> timestamp
-;; ; clj/vector(ints)    -> array int
-;; ; clj/vector(strings) -> array nvarchar/text?
-;; ; clj/map             -> json/jsonb
-;; ; jvm/guid            -> guid
-;; ; ???                 -> Hstore ??
-;; ; ???                 -> geo point
-;; ; ???                 -> geo line
+; Complex DELETE/UPDATE are pushed to sql files
 
 
 
-;; ; How to specify extended types in order to properly map to postgresql?
-;; {:type* 'psql.guid}
+; How to handle additional types/mappings
+; java.time.Instant   -> timestamp
+; clj/vector(ints)    -> array int
+; clj/vector(strings) -> array nvarchar/text?
+; clj/map             -> json/jsonb
+; jvm/guid            -> guid
+; ???                 -> Hstore ??
+; ???                 -> geo point
+; ???                 -> geo line
+
+
+
+; How to specify extended types in order to properly map to postgresql?
+; {:type* 'psql.guid}
 
 
 
 
+; for sizing of connection pool
+; connections = ((core_count * 2) + effective_spindle_count)
+; (.availableProcessors (Runtime/getRuntime))
 
-;; ;; public void updatePrice(float price, String cofName,
-;; ;;                             String username, String password)
-;; ;;         throws SQLException{
 
-;; ;;         Connection con;
-;; ;;         PreparedStatement pstmt;
-;; ;;         try {
-;; ;;             con = ds.getConnection(username, password);
-;; ;;             con.setAutoCommit(false);
-;; ;;             pstmt = con.prepareStatement("UPDATE COFFEES " +
-;; ;;                         "SET PRICE = ? " +
-;; ;;                         "WHERE COF_NAME = ?");
-;; ;;             pstmt.setFloat(1, price);
-;; ;;             pstmt.setString(2, cofName);
-;; ;;             pstmt.executeUpdate();
 
-;; ;;             con.commit();
-;; ;;             pstmt.close();
 
-;; ;;         } finally {
-;; ;;             if (con != null) con.close();
-;; ;;         }
-;; ;;     }
+; low level DML
+; insert => generated key or exception
+  ; what about user_roles which has no generated key?
+
+; update => true or exception (rows effected?)
+; delete => true or exception
+
+
+
+
+; *** helpers *********************
+
+(defn first-result [rs _]
+  (first rs))
+
+(defn nth-result [rs _ n]
+  (nth rs n))
+
+
+
+
+(defmacro def-datasource
+  "Creates a JDBC datasource"
+  [dsname config]
+  ; todo validate config...
+  `(def ~dsname
+     (if (:pooled ~config)
+       (~datasources/create-pooled-datasource ~config)
+       (~datasources/create-datasource ~config))))
+
+
+
+
 
 
 

@@ -27,32 +27,57 @@
 
 
 
-
-
-(with-open [cnx (.getConnection tests-db)]
-    (execute cnx "select 'ehlo' as msg_xxx;"))
-
-
-
-
+(deftest can-select-multiple-resultsets
+  (with-open [cnx (.getConnection tests-db)]
+    (is (= '(({:msg1 "ehlo1"}) ({:msg2 "ehlo2"}))
+            (with-open [cnx (.getConnection tests-db)]
+                 (execute cnx "select 'ehlo1' as msg1; select 'ehlo2' as msg2;" ))))))
 
 
 
-;; (deftest insert-single-record
-
-;;   (with-open [cnx (.getConnection testsdb)]
-;;     (execute cnx "DROP TABLE IF EXISTS insert_single_record;")
-;;     (execute cnx "CREATE TABLE insert_single_record (id int primary key, name text);"))
 
 
-;;   (trx-> tests-db
-;;          (insert :insert-single-record {:first-name "bob"}))
 
-;;   (is (= [{:id 1 :first-name "bob"}]
-;;          (qry-> tests-db
-;;                 (execute "SELECT id, name FROM insert_single_record;")
-;;                 (first-result))))
-;;   )
+
+(deftest insert-and-select-simple-record
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS insert_single_record;")
+    (execute cnx "CREATE TABLE insert_single_record (id serial primary key not null, first_name text);"))
+
+  (trx-> tests-db
+         (insert :insert-single-record {:first-name "bob"}))
+
+  (is (= [{:id 1 :first-name "bob"}]
+         (qry-> tests-db
+                (execute "SELECT id, first_name FROM insert_single_record;"))))
+
+  )
+
+
+
+
+
+
+
+; (run-tests 'taoclj.foundation-test)
+
+
+
+
+;; (trx-> datasource
+;;        (insert :users      {:name "Bob"  :username "bob"  :password "abc123"})
+;;        (insert :user-roles (with-rs 1 {:user-id (first rs)
+;;                                        :role-id item})))
+
+
+
+; (with-open [cnx (.getConnection tests-db)]
+;    (execute cnx "select 'ehlo' as msg1; select 'ehlo' as msg1;"))
+
+
+
+
 
 
 
@@ -63,6 +88,10 @@
 
 ;;        {:iso :read-commited}
 ;;        )
+
+
+
+
 
 
 
