@@ -6,9 +6,8 @@
 
 
 (defn to-column-list [columns]
-  (str "(" (join ","
-             (map (fn [col] (to-quoted-db-name col))
-                  columns)) ")"))
+  (join "," (map (fn [col] (to-quoted-db-name col))
+                 columns)))
 
 
 (defn to-values-list [column-count]
@@ -37,16 +36,20 @@
 
 
 
+(defn to-sql-select [table-name columns where-columns]
+  (str "SELECT "
+       (if columns (to-column-list columns) "*")
+       " FROM "
+       (to-quoted-db-name table-name)
+       (to-where where-columns)))
+
 
 (defn to-sql-insert [table-name columns row-count]
   (str "INSERT INTO "
        (to-quoted-db-name table-name)
-       (to-column-list columns)
+       (str "(" (to-column-list columns) ")")
        "VALUES"
-       (to-insert-values row-count (count columns))
-
-       ; try postgresql returning syntax and see what comes back over jdbc...
-       ))
+       (to-insert-values row-count (count columns))))
 
 
 (defn to-sql-delete [table-name where-columns]
@@ -62,6 +65,16 @@
        (to-update-set-list columns)
        (to-where where-columns)))
  ; (to-sql-update :users [:first-name :last-name] [:id])
+
+
+
+
+
+
+
+
+
+
 
 
 

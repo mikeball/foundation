@@ -3,6 +3,18 @@
             [taoclj.foundation.dml :refer :all]))
 
 
+(deftest selects-are-generated
+  (are [table columns where-columns expected]
+       (= expected (to-sql-select table columns where-columns))
+
+       "users" nil ["id"]
+       "SELECT * FROM \"users\" WHERE \"id\"=?"
+
+       :users [:first-name :last-name] [:id :id2]
+       "SELECT \"first_name\",\"last_name\" FROM \"users\" WHERE \"id\"=? AND \"id2\"=?"
+  ))
+
+
 
 (deftest inserts-are-generated
   (are [table columns row-count expected]
@@ -17,7 +29,6 @@
 
        :app-users [:first-name :last-name] 2
        "INSERT INTO \"app_users\"(\"first_name\",\"last_name\")VALUES(?, ?),(?, ?)"
-
   ))
 
 

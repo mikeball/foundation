@@ -1,5 +1,5 @@
 (ns taoclj.foundation
-  (:require [taoclj.foundation.dml :refer [to-sql-insert]]
+  (:require [taoclj.foundation.dml :refer [to-sql-select to-sql-insert]]
             [taoclj.foundation.mappings :refer [from-db-name]]
             [taoclj.foundation.datasources :as datasources])
   (:import [java.sql Statement Timestamp] ))
@@ -9,6 +9,7 @@
 
 
 
+; *** result set readers *********************
 
 (defn read-resultset
   ([^java.sql.ResultSet rs] (read-resultset rs nil))
@@ -38,22 +39,16 @@
         (read-rows)) )))
 
 
-
 (defn read-resultsets [^java.sql.Statement statement result-format]
-
   (let [read-sets (fn readrs []
                     (let [rs (.getResultSet statement)]
                       (cons (read-resultset rs result-format)
                             (if (.getMoreResults statement)
                               (readrs)))))
-
         results   (read-sets)]
-
     (if (= 1 (count results))
       (first results)
       results )))
-
-
 
 
 ;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
@@ -63,47 +58,6 @@
 
 
 
-
-
-
-
-
-
-
-; add ability to parameterize a single query...
-(defn execute
-  ([cnx sql] (execute [] cnx sql))
-  ([rs cnx sql]
-
-   (let [statement  (.createStatement cnx)
-         has-result (.execute statement sql)]
-
-     (if-not has-result ; was a result set returned?
-       (do (.close statement) true) ; return some metadata??
-       (read-resultsets statement nil)))))
-
-
-
-
-;; (with-open [cnx (.getConnection tests-db)]
-;;     (execute cnx "select 'ehlo' as my_message;"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-; http://clojure-doc.org/articles/ecosystem/java_jdbc/using_sql.html
-; http://docs.oracle.com/javase/tutorial/jdbc/basics/sqldatasources.html
-; http://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#prepareStatement-java.lang.String-int-
 
 
 
@@ -136,6 +90,68 @@
          column-names)))
 
 
+
+
+
+
+
+; *** statements *********************
+
+; add ability to parameterize a single query...
+(defn execute
+  "Executes raw, unsafe sql."
+  ([cnx sql] (execute [] cnx sql))
+  ([rs cnx sql]
+   (let [statement  (.createStatement cnx)
+         has-result (.execute statement sql)]
+     (conj rs
+           (if-not has-result ; was a result set returned?
+             (do (.close statement) true) ; return some metadata??
+             (read-resultsets statement nil))))))
+
+; (qry-> taoclj.foundation.tests-config/tests-db
+;       (execute "select 'ehlo' as msg1;"))
+
+
+
+
+; *** simple select dsl  *********************
+
+
+(defn select1
+  ([rs cnx table-name where-equals]
+   (select1 rs cnx table-name nil where-equals))
+
+  ([rs cnx table-name columns where-equals]
+   (let [where-columns (keys where-equals)
+          sql (to-sql-select table-name columns where-columns)
+          statement (.prepareStatement cnx sql)]
+      (set-parameter-values! statement where-columns where-equals)
+      (conj rs (-> (.executeQuery statement)
+                   (read-resultset nil)
+                   first)))))
+
+
+(defn select
+  ([rs cnx table-name where-equals]
+   (select rs cnx table-name nil where-equals))
+
+  ([rs cnx table-name columns where-equals]
+    (let [where-columns (keys where-equals)
+          sql (to-sql-select table-name columns where-columns)
+          statement (.prepareStatement cnx sql)]
+      (set-parameter-values! statement where-columns where-equals)
+      (conj rs (read-resultset (.executeQuery statement) nil)))))
+
+
+
+
+(qry-> taoclj.foundation.tests-config/tests-db
+       (select1 :insert-single-record {:id 1}))
+
+
+(qry-> taoclj.foundation.tests-config/tests-db
+       (select :insert-single-record {:id 1}))
 
 
 
@@ -229,7 +245,12 @@
             (let [~result-set (-> []
                                   ~@full-statements)]
               (.commit ~cnx)
-              ~result-set)
+
+              (if (= 1 (count ~result-set))
+                (first ~result-set)
+                ~result-set)
+
+              )
 
             (catch Exception ~ex
               (.rollback ~cnx)
@@ -240,6 +261,7 @@
               (.close ~cnx)))))))
 
 
+; TODO: add try/catch
 (defmacro qry-> [db & statements]
   (let [cnx             (gensym "cnx")
         result-set      (gensym "result-set")
@@ -250,16 +272,37 @@
     `(with-open [~cnx (.getConnection ~db)]
 
        (let [~result-set (-> [] ~@full-statements)]
-         ~result-set)
+         (if (= 1 (count ~result-set))
+           (first ~result-set)
+           ~result-set))
 
        )))
 
 
-; (qry-> taoclj.foundation.tests-config/tests-db
-;       (execute "SELECT id, first_name FROM insert_single_record;"))
+
+;;  (qry-> taoclj.foundation.tests-config/tests-db
+;;         (execute "select 'ehlo1' as msg1;"))
+
+
+;;   (qry-> taoclj.foundation.tests-config/tests-db
+;;         (execute "select 'ehlo1' as msg1;")
+;;         (execute "select 'ehlo2' as msg2;"))
 
 
 
+;; (trx-> taoclj.foundation.tests-config/tests-db
+;;        (execute "CREATE TABLE insert_single_record (id serial primary key not null, first_name text);"))
+
+
+;; (qry-> taoclj.foundation.tests-config/tests-db
+;;        (execute "SELECT id, first_name FROM insert_single_record;")
+;;        (execute "select 'ehlo' as message;"))
+
+
+
+;; (qry-> taoclj.foundation.tests-config/tests-db
+;;        (execute "select 'hi' as message;")
+;;        (execute "select 'ehlo' as message; select 'hello' as msg2;"))
 
 
 
@@ -274,11 +317,8 @@
 ;; ; *** result set and data transform helpers *********************
 
 ;; (defn validate-with-rs-template [columns item-structure]
-
 ;;   ; columns must be nil or vector of keywords/strings
-
 ;;   ; item template structure must be a vector or map
-
 ;;   )
 
 ;; ; (validate columns item-structure)
@@ -338,8 +378,9 @@
 ;; ; https://github.com/clojure/java.jdbc/blob/master/src/main/clojure/clojure/java/jdbc.clj#L362
 
 
-
-
+; http://clojure-doc.org/articles/ecosystem/java_jdbc/using_sql.html
+; http://docs.oracle.com/javase/tutorial/jdbc/basics/sqldatasources.html
+; http://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#prepareStatement-java.lang.String-int-
 
 
 
@@ -357,26 +398,6 @@
 
 ;; (execute [:a] datasource "select * from users;")
 ;; => [:a [{:name "bob"} {:name "bill"}]]
-
-
-;; ; *** datasource helpers *********************
-
-;; ; def-postgres, def-postgres-nopool ? create a java object with function that aquires an connection?
-;; (def datasource
-;;   (doto (HikariDataSource.)
-;;         (.setDataSourceClassName "com.impossibl.postgres.jdbc.PGDataSource")
-;;         (.setConnectionTimeout 5000)
-;;         (.setMaximumPoolSize 3)
-;;         (.addDataSourceProperty "Host"      "localhost")
-;;         (.addDataSourceProperty "Port"      5432)
-;;         (.addDataSourceProperty "Database"  "portal_db")
-;;         (.addDataSourceProperty "User"      "portal_app")
-;;         (.addDataSourceProperty "Password"  "dev")
-;;         ; config.addDataSourceProperty("cachePrepStmts", "true");
-;;         ; config.addDataSourceProperty("prepStmtCacheSize", "250");
-;;         ; config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-;;         ; config.addDataSourceProperty("useServerPrepStmts", "true");
-;;     ))
 
 
 
@@ -432,11 +453,22 @@
 
 
 
-;; ; Insert multiple syntx...
+;; ; Insert multiple syntx... map format results in multiple statements.
+;; ; could we perhaps cache across PreparedStatements?
 ;; (trx-> datasource
 ;;        (insert "users" [{:name "Bob"  :username "bob"  :password "xxx"}
 ;;                         {:name "Bill" :username "bill" :password "zzz"}])
 ;;  )
+
+;; ; vector based format for multiple records... results in single multi-row insert statement
+;; ; but batched in reasonable sizes (50 rows?) so we don't blow the parameter limits...
+;; ; also how to handle lazyness? Break colums out of
+;; (trx-> datasource
+;;        (insert "users" [[:name  :username :password]
+;;                         ["Bob"  "bob"     "xxx"]
+;;                         ["Bill" "bill"    "zzz"]]) )
+
+
 
 
 ;; ; DELETE syntax
@@ -512,17 +544,15 @@
 ; java.time.Instant   -> timestamp
 ; clj/vector(ints)    -> array int
 ; clj/vector(strings) -> array nvarchar/text?
-; clj/map             -> json/jsonb
+; clj/map             -> json/jsonb  ; clj/map defaults to json
 ; jvm/guid            -> guid
-; ???                 -> Hstore ??
+; ???                 -> Hstore ??    https://github.com/blakesmith/pghstore-clj
 ; ???                 -> geo point
 ; ???                 -> geo line
 
 
-
 ; How to specify extended types in order to properly map to postgresql?
-; {:type* 'psql.guid}
-
+; use with-meta!
 
 
 
@@ -545,11 +575,12 @@
 
 ; *** helpers *********************
 
-(defn first-result [rs _]
-  (first rs))
-
-(defn nth-result [rs _ n]
+(defn nth-result
+  "Extracts the nth result from a list of foundation results"
+  [rs _ n]
   (nth rs n))
+
+
 
 
 
