@@ -117,14 +117,15 @@
 
 ; *** simple select dsl  *********************
 
-
+; should select1 throw exception if more than 1 record is found?
+; should select1 throw exception of no records are found?
 (defn select1
   ([rs cnx table-name where-equals]
    (select1 rs cnx table-name nil where-equals))
 
   ([rs cnx table-name columns where-equals]
    (let [where-columns (keys where-equals)
-          sql (to-sql-select table-name columns where-columns)
+          sql (to-sql-select table-name columns where-columns 1)
           statement (.prepareStatement cnx sql)]
       (set-parameter-values! statement where-columns where-equals)
       (conj rs (-> (.executeQuery statement)
@@ -138,7 +139,7 @@
 
   ([rs cnx table-name columns where-equals]
     (let [where-columns (keys where-equals)
-          sql (to-sql-select table-name columns where-columns)
+          sql (to-sql-select table-name columns where-columns nil)
           statement (.prepareStatement cnx sql)]
       (set-parameter-values! statement where-columns where-equals)
       (conj rs (read-resultset (.executeQuery statement) nil)))))
@@ -146,12 +147,13 @@
 
 
 
-(qry-> taoclj.foundation.tests-config/tests-db
-       (select1 :insert-single-record {:id 1}))
+;; (qry-> taoclj.foundation.tests-config/tests-db
+;;        (select1 :insert-single-record {:id 1}))
 
 
-(qry-> taoclj.foundation.tests-config/tests-db
-       (select :insert-single-record {:id 1}))
+;; (qry-> taoclj.foundation.tests-config/tests-db
+;;        (select :insert-single-record nil)
+;; )
 
 
 
@@ -580,7 +582,7 @@
   [rs _ n]
   (nth rs n))
 
-
+; fn-result helper to extract ?
 
 
 

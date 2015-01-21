@@ -4,14 +4,19 @@
 
 
 (deftest selects-are-generated
-  (are [table columns where-columns expected]
-       (= expected (to-sql-select table columns where-columns))
+  (are [table columns where-columns limit expected]
+       (= expected (to-sql-select table columns where-columns limit))
 
-       "users" nil ["id"]
+       "users" nil ["id"] nil
        "SELECT * FROM \"users\" WHERE \"id\"=?"
 
-       :users [:first-name :last-name] [:id :id2]
+       :users [:first-name :last-name] [:id :id2] nil
        "SELECT \"first_name\",\"last_name\" FROM \"users\" WHERE \"id\"=? AND \"id2\"=?"
+
+
+       "users" nil [:id] 1
+       "SELECT * FROM \"users\" WHERE \"id\"=? LIMIT 1"
+
   ))
 
 

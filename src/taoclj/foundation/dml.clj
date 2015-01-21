@@ -20,11 +20,17 @@
 
 
 (defn to-where [columns]
-  (str " WHERE "
-       (join " AND "
-             (map #(str (to-quoted-db-name %) "=?")
-                  columns))))
+  (if columns
+    (str " WHERE "
+         (join " AND "
+               (map #(str (to-quoted-db-name %) "=?")
+                    columns)))))
 ; (to-where [:id :id2])
+
+
+(defn to-limit-offset [limit]
+  (if limit (str " LIMIT " limit)))
+
 
 
 (defn to-update-set-list [columns]
@@ -36,12 +42,23 @@
 
 
 
-(defn to-sql-select [table-name columns where-columns]
+; to generate parameters list for IN clause
+; (s/join ", " (repeat (count params) "?")
+
+
+(defn to-sql-select [table-name columns where-columns limit]
   (str "SELECT "
        (if columns (to-column-list columns) "*")
        " FROM "
        (to-quoted-db-name table-name)
-       (to-where where-columns)))
+       (to-where where-columns)
+       (to-limit-offset limit)
+       ))
+
+; (to-sql-select :users nil [:id] 1)
+
+
+(to-sql-select :insert-single-record nil nil nil)
 
 
 (defn to-sql-insert [table-name columns row-count]
