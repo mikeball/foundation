@@ -2,10 +2,8 @@
   (:require [taoclj.foundation.dml :refer [to-sql-select to-sql-insert]]
             [taoclj.foundation.mappings :refer [from-db-name]]
             [taoclj.foundation.datasources :as datasources])
-  (:import [java.sql Statement Timestamp] ))
-
-
-
+  (:import [java.time Instant]
+           [java.sql Statement Timestamp Types] ))
 
 
 
@@ -25,8 +23,17 @@
                       (throw (Exception. "ResultSet must have unique column names")))
 
           get-row-vals (fn [] (map (fn [^Integer i]
-                                     ; eventually map all types here...
-                                     (.getObject rs  i)) idxs))
+
+                                     ; map types back from DB!
+                                     (let [ct (.getColumnType rsmeta i)]
+
+                                       (cond (= ct Types/TIMESTAMP)
+                                             (.toInstant (.getTimestamp rs  i))
+
+                                             :default
+                                             (.getObject rs  i))))
+
+                                   idxs))
 
           read-rows (fn readrow []
                         (when (.next rs)
@@ -51,10 +58,10 @@
       results )))
 
 
+
 ;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
 ;;     (execute cnx "select 'ehlo1' as msg_aaa; select 'ehlo2' as msg_bbb;")
 ;;   )
-
 
 
 
@@ -542,19 +549,49 @@
 
 
 
+
+
+
+
+
 ; How to handle additional types/mappings
-; java.time.Instant   -> timestamp
-; clj/vector(ints)    -> array int
-; clj/vector(strings) -> array nvarchar/text?
-; clj/map             -> json/jsonb  ; clj/map defaults to json
-; jvm/guid            -> guid
-; ???                 -> Hstore ??    https://github.com/blakesmith/pghstore-clj
-; ???                 -> geo point
-; ???                 -> geo line
+; java.time.Instant       -> timestamp (with timezone??)
+; jvm/guid                -> guid
+; ??  -> inet (tracking ip addresses)
+; ??  -> isn (product data)
+
+; vector defaults to array in infers type? require meta declaration?
+; clj/vector(ints)        -> array int
+; clj/vector(strings)     -> array nvarchar/text?
+
+; should hstore or json be default for map?? neither??
+; clj/map                 -> json/jsonb  ; clj/map defaults to json??
+; clj/map+meta/:hstore    -> hstore    https://github.com/blakesmith/pghstore-clj
+
+
+; ??                      -> geo point
+; ??                      -> geo line
+; ?? -> int4range — Range of integer
+; ?? -> int8range — Range of bigint
+; ?? -> numrange — Range of numeric
+; ?? -> tstzrange — Range of timestamp with time zone
+; ?? -> daterange — Range of date
+
+; ?? -> Interval – time intervals, such as ‘1 hour’, ‘1 day’
+
+
+; http://www.craigkerstiens.com/2014/05/07/Postgres-datatypes-the-ones-youre-not-using/
+; http://www.craigkerstiens.com/2013/07/03/hstore-vs-json/
 
 
 ; How to specify extended types in order to properly map to postgresql?
-; use with-meta!
+; use with-meta
+
+
+
+; PG Types explicitly excluded
+; timestamp, money
+
 
 
 
@@ -566,12 +603,24 @@
 
 
 ; low level DML
-; insert => generated key or exception
-  ; what about user_roles which has no generated key?
+; insert => generated-key or false
+  ; what about user_roles which has no generated key? true?
 
-; update => true or exception (rows effected?)
-; delete => true or exception
+; update/success => rows-updated (long?)
+;       /success => true+meta-rows-updated (can boolean store meta???)
+;       /error   => false
 
+
+; delete/success => rows-deleted (long?)
+;       /error   => false
+
+; select/no-results => nil
+;       /error      => false
+;       /results    => sequence
+
+; select1/no-results => nil
+;        /error      => false
+;        /result     => first-result
 
 
 

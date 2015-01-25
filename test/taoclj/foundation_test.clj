@@ -46,8 +46,6 @@
 
 
 
-
-
 (deftest multiple-results-in-single-statement-returned
   (is (= '(({:msg1 "ehlo1"}) ({:msg2 "ehlo2"}))
           (qry-> tests-db

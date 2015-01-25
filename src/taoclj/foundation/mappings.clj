@@ -1,5 +1,5 @@
 (ns taoclj.foundation.mappings)
-
+; (ns taoclj.foundation.naming) ???
 
 (defn- convert-char [c]
   (let [n (int c)]
