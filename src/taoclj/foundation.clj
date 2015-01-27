@@ -1,112 +1,17 @@
 (ns taoclj.foundation
   (:require [taoclj.foundation.dml :refer [to-sql-select to-sql-insert]]
-            [taoclj.foundation.mappings :refer [from-db-name]]
-            [taoclj.foundation.datasources :as datasources])
+            [taoclj.foundation.datasources :as datasources]
+            [taoclj.foundation.reading :refer [read-resultsets read-resultset]]
+            [taoclj.foundation.writing :refer [set-parameter-values]] )
   (:import [java.time Instant]
-           [java.sql Statement Timestamp Types] ))
-
-
-
-; *** result set readers *********************
-
-(defn read-resultset
-  ([^java.sql.ResultSet rs] (read-resultset rs nil))
-  ([^java.sql.ResultSet rs result-format]
-
-    (let [rsmeta  (.getMetaData rs)
-          idxs    (range 1 (inc (.getColumnCount rsmeta)))
-
-          columns (map from-db-name
-                       (map #(.getColumnLabel rsmeta %) idxs) )
-
-          dups    (or (apply distinct? columns)
-                      (throw (Exception. "ResultSet must have unique column names")))
-
-          get-row-vals (fn [] (map (fn [^Integer i]
-
-                                     ; map types back from DB!
-                                     (let [ct (.getColumnType rsmeta i)]
-
-                                       (cond (= ct Types/TIMESTAMP)
-                                             (.toInstant (.getTimestamp rs  i))
-
-                                             :default
-                                             (.getObject rs  i))))
-
-                                   idxs))
-
-          read-rows (fn readrow []
-                        (when (.next rs)
-                          (if (= result-format :rows)
-                            (cons (vec (get-row-vals)) (readrow))
-                            (cons (zipmap columns (get-row-vals)) (readrow)))))]
-
-      (if (= result-format :rows)
-        (cons (vec columns) (read-rows))
-        (read-rows)) )))
-
-
-(defn read-resultsets [^java.sql.Statement statement result-format]
-  (let [read-sets (fn readrs []
-                    (let [rs (.getResultSet statement)]
-                      (cons (read-resultset rs result-format)
-                            (if (.getMoreResults statement)
-                              (readrs)))))
-        results   (read-sets)]
-    (if (= 1 (count results))
-      (first results)
-      results )))
-
-
-
-;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-;;     (execute cnx "select 'ehlo1' as msg_aaa; select 'ehlo2' as msg_bbb;")
-;;   )
+           [java.sql Statement] ))
 
 
 
 
-
-
-; *** parameter mappings *********************
-
-; TODO: figure out way to test mappings??
-(defn- set-parameter-value! [^Statement statement ^Long position value]
-  ; (println "parameter cls = " (class value))
-  (if value
-    (let [cls (class value)]
-      (cond (= cls java.lang.String)  (.setString statement position value)
-            (= cls java.lang.Integer) (.setInt statement position value)
-            (= cls java.lang.Long)    (.setLong statement position value)
-            (= cls java.time.Instant) (.setTimestamp statement position
-                                                     (Timestamp/from value))
-            :default
-            (throw (Exception. "Parameter type not mapped!"))))))
-
-
-; (class (java.sql.Timestamp/from (Instant/now)))
-
-
-(defn- set-parameter-values! [^Statement statement column-names data]
-  ; (println "now setting parameter values...")
-  (doall
-    (map (fn [col]
-           (let [position (+ 1 (.indexOf column-names col))
-                 value (col data)]
-             (set-parameter-value! statement position value) ))
-         column-names)))
-
-
-
-
-
-
-
-; *** statements *********************
-
-; add ability to parameterize a single query...
 (defn execute
-  "Executes raw, unsafe sql."
+  "Executes raw, unsafe sql. Uses statement under the hood so we can
+  support multiple resultsets, but which can not be parameterized."
   ([cnx sql] (execute [] cnx sql))
   ([rs cnx sql]
    (let [statement  (.createStatement cnx)
@@ -122,10 +27,17 @@
 
 
 
+
+
+
+
+
+
+
 ; *** simple select dsl  *********************
 
-; should select1 throw exception if more than 1 record is found?
-; should select1 throw exception of no records are found?
+; should select1 throw exception if more than 1 record is found? yes?
+; should select1 throw exception of no records are found? return nil?
 (defn select1
   ([rs cnx table-name where-equals]
    (select1 rs cnx table-name nil where-equals))
@@ -134,10 +46,58 @@
    (let [where-columns (keys where-equals)
           sql (to-sql-select table-name columns where-columns 1)
           statement (.prepareStatement cnx sql)]
-      (set-parameter-values! statement where-columns where-equals)
+      (set-parameter-values statement where-columns where-equals)
       (conj rs (-> (.executeQuery statement)
                    (read-resultset nil)
                    first)))))
+
+
+
+
+
+
+
+
+
+(def-select1 select-session
+  {:file ""}
+
+  ; prep sql file
+  ; <-
+
+  (fn [params]
+    ; question - prepared statement or statement?
+
+    ; convert params to array
+
+
+    )
+  )
+
+
+(defn load-session [id]
+  (qry-> portal-db
+         (select-session {:id id})))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 (defn select
@@ -148,45 +108,37 @@
     (let [where-columns (keys where-equals)
           sql (to-sql-select table-name columns where-columns nil)
           statement (.prepareStatement cnx sql)]
-      (set-parameter-values! statement where-columns where-equals)
+      (set-parameter-values statement where-columns where-equals)
       (conj rs (read-resultset (.executeQuery statement) nil)))))
-
-
 
 
 ;; (qry-> taoclj.foundation.tests-config/tests-db
 ;;        (select1 :insert-single-record {:id 1}))
 
 
-;; (qry-> taoclj.foundation.tests-config/tests-db
-;;        (select :insert-single-record nil)
-;; )
 
 
 
 
 
 
+; *** insert/update/delete *********************
+
+; insert single map
+
+; insert vector of maps
+  ; never batch, record columns might be different
+  ; separate prepared statement for each map/record
+
+; insert vector of header/row vectors
+  ; single statement
+  ; eventually we might want to batch in row counts of ???
+    ; for very large insert sets that is
 
 
-;; ; *** insert/update/delete *********************
-
-
-;; ; insert single map
-
-;; ; insert vector of maps
-;;   ; never batch, record columns might be different
-;;   ; separate prepared statement for each map/record
-
-;; ; insert vector of header/row vectors
-;;   ; single statement
-;;   ; eventually we might want to batch in row counts of ???
-;;     ; for very large insert sets that is
-
-
-;; ; we will take a strategy of validating/verifying on the fly and
-;; ; throwing exceptions if any problems are encountered. We do this rather than
-;; ; attempting to validate an entire query set before proceeding. Performance/Memory!
+; we will take a strategy of validating/verifying on the fly and
+; throwing exceptions if any problems are encountered. We do this rather than
+; attempting to validate an entire query set before proceeding. Performance/Memory!
 
 (defn insert [rs cnx table-name data]
   ; (println "data = " data)
@@ -203,7 +155,6 @@
                             :default    (throw
                                           (Exception. "Passed transform not valid!")))]
 
-
     ; handle multiple items to insert
 
 
@@ -212,7 +163,7 @@
           statement (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
 
 
-      (set-parameter-values! statement column-names resolved-data)
+      (set-parameter-values statement column-names resolved-data)
 
         (let [rowcount       (.executeUpdate statement)
               generated-keys (.getGeneratedKeys statement)
@@ -224,94 +175,8 @@
           (.close statement)
           (conj rs generated-id)
 
-  ;;         [rowcount
-  ;;          (.getObject generated-keys 1) ; id column
-  ;;          (.getObject generated-keys 2) ; name column
-  ;;          (.getColumnName keys-meta 1)
-  ;;          (.getColumnType keys-meta 1)
-  ;;          (.isAutoIncrement keys-meta 1)]
-  ) )) )
+      ))))
 
-
-
-
-
-; *** trx->  *********************
-(defmacro trx-> [db & statements]
-  (let [cnx        (gensym "cnx")
-        ex         (gensym "ex")
-        result-set (gensym "result-set")
-        transform (fn [statement]
-                    (concat [(first statement) cnx] (rest statement)))
-        full-statements (map transform statements)]
-
-    `(let [~cnx (try (.getConnection ~db)
-                     (catch Exception ~ex nil))]
-       (if-not ~cnx false
-          (try
-            (.setAutoCommit ~cnx false)
-
-            (let [~result-set (-> []
-                                  ~@full-statements)]
-              (.commit ~cnx)
-
-              (if (= 1 (count ~result-set))
-                (first ~result-set)
-                ~result-set)
-
-              )
-
-            (catch Exception ~ex
-              (.rollback ~cnx)
-              (println ~ex)
-              false)
-
-            (finally
-              (.close ~cnx)))))))
-
-
-; TODO: add try/catch
-(defmacro qry-> [db & statements]
-  (let [cnx             (gensym "cnx")
-        result-set      (gensym "result-set")
-        transform       (fn [statement]
-                          (concat [(first statement) cnx] (rest statement)))
-        full-statements (map transform statements)]
-
-    `(with-open [~cnx (.getConnection ~db)]
-
-       (let [~result-set (-> [] ~@full-statements)]
-         (if (= 1 (count ~result-set))
-           (first ~result-set)
-           ~result-set))
-
-       )))
-
-
-
-;;  (qry-> taoclj.foundation.tests-config/tests-db
-;;         (execute "select 'ehlo1' as msg1;"))
-
-
-;;   (qry-> taoclj.foundation.tests-config/tests-db
-;;         (execute "select 'ehlo1' as msg1;")
-;;         (execute "select 'ehlo2' as msg2;"))
-
-
-
-;; (trx-> taoclj.foundation.tests-config/tests-db
-;;        (execute "CREATE TABLE insert_single_record (id serial primary key not null, first_name text);"))
-
-
-;; (qry-> taoclj.foundation.tests-config/tests-db
-;;        (execute "SELECT id, first_name FROM insert_single_record;")
-;;        (execute "select 'ehlo' as message;"))
-
-
-
-;; (qry-> taoclj.foundation.tests-config/tests-db
-;;        (execute "select 'hi' as message;")
-;;        (execute "select 'ehlo' as message; select 'hello' as msg2;"))
 
 
 
@@ -624,6 +489,10 @@
 
 
 
+
+
+
+
 ; *** helpers *********************
 
 (defn nth-result
@@ -631,7 +500,64 @@
   [rs _ n]
   (nth rs n))
 
-; fn-result helper to extract ?
+
+
+(defmacro trx-> [db & statements]
+  (let [cnx        (gensym "cnx")
+        ex         (gensym "ex")
+        result-set (gensym "result-set")
+        transform (fn [statement]
+                    (concat [(first statement) cnx] (rest statement)))
+        full-statements (map transform statements)]
+
+    `(let [~cnx (try (.getConnection ~db)
+                     (catch Exception ~ex nil))]
+       (if-not ~cnx false
+          (try
+            (.setAutoCommit ~cnx false)
+
+            (let [~result-set (-> []
+                                  ~@full-statements)]
+              (.commit ~cnx)
+
+              (if (= 1 (count ~result-set))
+                (first ~result-set)
+                ~result-set)
+
+              )
+
+            (catch Exception ~ex
+              (.rollback ~cnx)
+              (println ~ex)
+              false)
+
+            (finally
+              (.close ~cnx)))))))
+
+
+; TODO: add try/catch
+(defmacro qry-> [db & statements]
+  (let [cnx             (gensym "cnx")
+        result-set      (gensym "result-set")
+        transform       (fn [statement]
+                          (concat [(first statement) cnx] (rest statement)))
+        full-statements (map transform statements)]
+
+    `(with-open [~cnx (.getConnection ~db)]
+
+       (let [~result-set (-> [] ~@full-statements)]
+         (if (= 1 (count ~result-set))
+           (first ~result-set)
+           ~result-set))
+
+       )))
+
+
+
+;;  (qry-> taoclj.foundation.tests-config/tests-db
+;;         (execute "select 'ehlo1' as msg1;"))
+
+
 
 
 
@@ -644,13 +570,6 @@
      (if (:pooled ~config)
        (~datasources/create-pooled-datasource ~config)
        (~datasources/create-datasource ~config))))
-
-
-
-
-
-
-
 
 
 

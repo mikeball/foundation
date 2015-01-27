@@ -1,6 +1,6 @@
 (ns taoclj.foundation.dml
   (:require [clojure.string :refer [join]]
-            [taoclj.foundation.mappings :refer [to-quoted-db-name]]))
+            [taoclj.foundation.naming :refer [to-quoted-db-name]]))
 
 
 
