@@ -3,12 +3,10 @@
             [taoclj.foundation.datasources :as datasources]
             [taoclj.foundation.reading :refer [read-resultsets read-resultset]]
             [taoclj.foundation.writing :refer [set-parameter-values]]
-
-            [taoclj.foundation.templates.parsing :refer [scan-sql]]
+            [taoclj.foundation.templates.loading :refer [load-template]]
             [taoclj.foundation.templates.generation :refer [compile-query]])
-
   (:import [java.time Instant]
-           [java.sql Statement] ))
+           [java.sql Statement]))
 
 
 
@@ -33,7 +31,7 @@
 
 
 
-(defn- execute-prepared-query
+(defn execute-prepared-query
   "Sets parameter values and executes a jdbc prepared statement."
   [cnx compiled-query]
   ; (println "*** (:sql parsed) " (:sql compiled-query))
@@ -59,7 +57,6 @@
                     :param-values (map where-equals where-columns)}]
       (conj rs (execute-prepared-query cnx compiled)))))
 
-
 ;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
 ;  (select [] cnx :insert-single-record {:id 2} )
 ;)
@@ -83,8 +80,6 @@
 
      )))
 
-
-
 ;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
 ;  (select1 [] cnx :insert-single-record {:id 2} )
 ;  )
@@ -94,26 +89,22 @@
 
 
 
-
-
-
-(defn load-queries [options]
-  ; [(slurp path)]
-  ; (slurp "src/taoclj/sql/test-def-select1.sql")
-
-  (let [raw-queries ["select * from insert_single_record where id=:id"]]
-    (map scan-sql raw-queries))
-  )
-
-;(load-queries "src/taoclj/sql/test-def-select1.sql"
-;)
-
-
-;(compile-query ["select * from users where id=" :id " and name in(" :names ")"]
-;               {:id 1 :names ["bob" "bill"] :unused-key "xxx"}
-;)
-
-
+(defmacro def-select [name options]
+  (let [queries      (gensym "queries")
+        scanned      (gensym "scanned-query")
+        rs           (gensym "rs")
+        cnx          (gensym "cnx")
+        params       (gensym "params")
+        compiled     (gensym "compiled")]
+    `(def ~name
+       (let [~queries (~load-template ~options)]
+         (fn [~rs ~cnx ~params]
+           (let [~scanned      (first ~queries)
+                 ~compiled     (compile-query ~scanned ~params)]
+             (conj ~rs
+                   (execute-prepared-query ~cnx ~compiled)
+                   ; assoc rest of queries
+                   )))))))
 
 
 
@@ -124,36 +115,25 @@
         cnx          (gensym "cnx")
         params       (gensym "params")
         compiled     (gensym "compiled")]
-
     `(def ~name
-       (let [~queries (~load-queries ~options)]
+       (let [~queries (~load-template ~options)]
          (fn [~rs ~cnx ~params]
-
            (let [~scanned      (first ~queries)
                  ~compiled     (compile-query ~scanned ~params)]
-
              (conj ~rs
                    (first (execute-prepared-query ~cnx ~compiled))
                    ; assoc rest of queries
-                )))))
-  ))
+                   )))))))
+
+;; (def-select1 select1-example
+;;   {:file "taoclj/sql/test-def-select1.sql"})
+
+;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;;   (select1-example [] cnx {:ids [1]})
+;; )
 
 
-; {:sql "select * from users where id=? and name in(?,?,?)"
-;  :param-values (1 "bob" "joe" "bill")}
 
-
-; (def-select1 select-session
-;  {:file "/sql/select-session.sql"})
-
-
-;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-;  (select-session [] cnx {:id 1} )
-;  )
-
-
-; (qry-> taoclj.foundation.tests-config/tests-db
-;       (select-session {:id 1}))
 
 
 
