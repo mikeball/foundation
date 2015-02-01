@@ -1,6 +1,6 @@
-(ns taoclj.foundation.dml-test
+(ns taoclj.foundation.dsl-test
   (:require [clojure.test :refer :all]
-            [taoclj.foundation.dml :refer :all]))
+            [taoclj.foundation.dsl :refer :all]))
 
 
 (deftest selects-are-generated
@@ -75,8 +75,7 @@
 
 
 
-;; (run-tests *ns*
-;; )
+; (run-tests *ns*)
 
 
 

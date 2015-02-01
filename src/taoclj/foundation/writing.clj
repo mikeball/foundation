@@ -18,11 +18,18 @@
 ; (class (java.sql.Timestamp/from (Instant/now)))
 
 
-(defn set-parameter-values [^Statement statement column-names data]
-  ; (println "now setting parameter values...")
+
+; this version handles exploded list parameters
+; perhaps we just take a parsed query map?
+(defn set-parameter-values [^Statement statement param-values]
   (doall
-    (map (fn [col]
-           (let [position (+ 1 (.indexOf column-names col))
-                 value (col data)]
-             (set-parameter-value! statement position value) ))
-         column-names)))
+    (map-indexed
+      (fn [index value]
+        (set-parameter-value! statement (+ 1 index) value) )
+
+      param-values)))
+
+; compiled-query
+; {:sql "select * from users where id=? and name in(?,?,?)"
+;  :param-values (1 "bob" "joe" "bill")}
+

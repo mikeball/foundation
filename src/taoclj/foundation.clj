@@ -1,8 +1,12 @@
 (ns taoclj.foundation
-  (:require [taoclj.foundation.dml :refer [to-sql-select to-sql-insert]]
+  (:require [taoclj.foundation.dsl :refer [to-sql-select to-sql-insert]]
             [taoclj.foundation.datasources :as datasources]
             [taoclj.foundation.reading :refer [read-resultsets read-resultset]]
-            [taoclj.foundation.writing :refer [set-parameter-values]] )
+            [taoclj.foundation.writing :refer [set-parameter-values]]
+
+            [taoclj.foundation.templates.parsing :refer [scan-sql]]
+            [taoclj.foundation.templates.generation :refer [compile-query]])
+
   (:import [java.time Instant]
            [java.sql Statement] ))
 
@@ -10,7 +14,7 @@
 
 
 (defn execute
-  "Executes raw, unsafe sql. Uses statement under the hood so we can
+  "Executes raw, unsafe sql. Uses jdbc statement under the hood so we can
   support multiple resultsets, but which can not be parameterized."
   ([cnx sql] (execute [] cnx sql))
   ([rs cnx sql]
@@ -21,20 +25,48 @@
              (do (.close statement) true) ; return some metadata??
              (read-resultsets statement nil))))))
 
-; (qry-> taoclj.foundation.tests-config/tests-db
-;       (execute "select 'ehlo' as msg1;"))
+;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;  (execute [] cnx "select * from insert_single_record;" )
+;)
 
 
 
 
 
+(defn- execute-prepared-query
+  "Sets parameter values and executes a jdbc prepared statement."
+  [cnx compiled-query]
+  ; (println "*** (:sql parsed) " (:sql compiled-query))
+  ; (println "*** (:params parsed) " (:params compiled-query))
 
-
+  (let [statement (.prepareStatement cnx (:sql compiled-query))]
+        (set-parameter-values statement (:param-values compiled-query))
+        (-> (.executeQuery statement)
+            (read-resultset nil))))
 
 
 
 
 ; *** simple select dsl  *********************
+
+(defn select
+  ([rs cnx table-name where-equals]
+   (select rs cnx table-name nil where-equals))
+
+  ([rs cnx table-name columns where-equals]
+    (let [where-columns (keys where-equals)
+          compiled {:sql (to-sql-select table-name columns where-columns nil)
+                    :param-values (map where-equals where-columns)}]
+      (conj rs (execute-prepared-query cnx compiled)))))
+
+
+;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;  (select [] cnx :insert-single-record {:id 2} )
+;)
+
+
+
+
 
 ; should select1 throw exception if more than 1 record is found? yes?
 ; should select1 throw exception of no records are found? return nil?
@@ -44,12 +76,18 @@
 
   ([rs cnx table-name columns where-equals]
    (let [where-columns (keys where-equals)
-          sql (to-sql-select table-name columns where-columns 1)
-          statement (.prepareStatement cnx sql)]
-      (set-parameter-values statement where-columns where-equals)
-      (conj rs (-> (.executeQuery statement)
-                   (read-resultset nil)
-                   first)))))
+         compiled {:sql (to-sql-select table-name columns where-columns 1)
+                   :param-values (map where-equals where-columns)}]
+     (conj rs
+           (first (execute-prepared-query cnx compiled)))
+
+     )))
+
+
+
+;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;  (select1 [] cnx :insert-single-record {:id 2} )
+;  )
 
 
 
@@ -59,61 +97,69 @@
 
 
 
-(def-select1 select-session
-  {:file ""}
+(defn load-queries [options]
+  ; [(slurp path)]
+  ; (slurp "src/taoclj/sql/test-def-select1.sql")
 
-  ; prep sql file
-  ; <-
-
-  (fn [params]
-    ; question - prepared statement or statement?
-
-    ; convert params to array
-
-
-    )
+  (let [raw-queries ["select * from insert_single_record where id=:id"]]
+    (map scan-sql raw-queries))
   )
 
-
-(defn load-session [id]
-  (qry-> portal-db
-         (select-session {:id id})))
+;(load-queries "src/taoclj/sql/test-def-select1.sql"
+;)
 
 
-
-
-
+;(compile-query ["select * from users where id=" :id " and name in(" :names ")"]
+;               {:id 1 :names ["bob" "bill"] :unused-key "xxx"}
+;)
 
 
 
 
 
+(defmacro def-select1 [name options]
+  (let [queries      (gensym "queries")
+        scanned      (gensym "scanned-query")
+        rs           (gensym "rs")
+        cnx          (gensym "cnx")
+        params       (gensym "params")
+        compiled     (gensym "compiled")]
+
+    `(def ~name
+       (let [~queries (~load-queries ~options)]
+         (fn [~rs ~cnx ~params]
+
+           (let [~scanned      (first ~queries)
+                 ~compiled     (compile-query ~scanned ~params)]
+
+             (conj ~rs
+                   (first (execute-prepared-query ~cnx ~compiled))
+                   ; assoc rest of queries
+                )))))
+  ))
+
+
+; {:sql "select * from users where id=? and name in(?,?,?)"
+;  :param-values (1 "bob" "joe" "bill")}
+
+
+; (def-select1 select-session
+;  {:file "/sql/select-session.sql"})
+
+
+;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;  (select-session [] cnx {:id 1} )
+;  )
+
+
+; (qry-> taoclj.foundation.tests-config/tests-db
+;       (select-session {:id 1}))
 
 
 
 
 
 
-
-
-
-
-
-
-(defn select
-  ([rs cnx table-name where-equals]
-   (select rs cnx table-name nil where-equals))
-
-  ([rs cnx table-name columns where-equals]
-    (let [where-columns (keys where-equals)
-          sql (to-sql-select table-name columns where-columns nil)
-          statement (.prepareStatement cnx sql)]
-      (set-parameter-values statement where-columns where-equals)
-      (conj rs (read-resultset (.executeQuery statement) nil)))))
-
-
-;; (qry-> taoclj.foundation.tests-config/tests-db
-;;        (select1 :insert-single-record {:id 1}))
 
 
 
@@ -163,7 +209,7 @@
           statement (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
 
 
-      (set-parameter-values statement column-names resolved-data)
+      (set-parameter-values statement (map resolved-data column-names))
 
         (let [rowcount       (.executeUpdate statement)
               generated-keys (.getGeneratedKeys statement)
@@ -176,6 +222,7 @@
           (conj rs generated-id)
 
       ))))
+
 
 
 

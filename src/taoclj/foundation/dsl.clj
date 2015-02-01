@@ -1,4 +1,4 @@
-(ns taoclj.foundation.dml
+(ns taoclj.foundation.dsl
   (:require [clojure.string :refer [join]]
             [taoclj.foundation.naming :refer [to-quoted-db-name]]))
 
