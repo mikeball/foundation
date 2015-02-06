@@ -45,11 +45,133 @@
                 (execute "select 'ehlo' where true=false;")))))
 
 
-
 (deftest multiple-results-in-single-statement-returned
   (is (= '(({:msg1 "ehlo1"}) ({:msg2 "ehlo2"}))
           (qry-> tests-db
                  (execute "select 'ehlo1' as msg1; select 'ehlo2' as msg2;")))))
+
+
+
+; qry-> returns false on errors
+
+
+
+
+
+; ********** Select Tests ***********************
+
+
+(deftest select1-record
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS select1_record;")
+    (execute cnx "CREATE TABLE select1_record (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO select1_record (name) VALUES('bob');"))
+
+
+  (is (= {:id 1 :name "bob"}
+         (qry-> tests-db
+                (select1 :select1-record {:id 1}))))
+
+  (is (= nil
+         (qry-> tests-db
+                (select1 :select1-record {:id 2}))))
+
+  )
+
+
+
+
+(deftest select-records
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS select_records;")
+    (execute cnx "CREATE TABLE select_records (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO select_records (name) VALUES ('bob'),('bill');"))
+
+  (is (= [{:id 1 :name "bob"} {:id 2 :name "bill"}]
+         (qry-> tests-db
+                (select :select-records {}))))
+
+  (is (= nil
+         (qry-> tests-db
+                (select :select-records {:id 3}))))
+
+  )
+
+
+
+; ********** Templated Query Tests ***********************
+
+(deftest templated-select1-record
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS templated_select1_record;")
+    (execute cnx "CREATE TABLE templated_select1_record (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO templated_select1_record (name) VALUES ('bob');"))
+
+
+  (def-select1 templated-select1-record-query
+    {:file "taoclj/foundation/sql/templated_select1_record.sql"})
+
+
+  (is (= {:id 1 :name "bob"}
+         (qry-> tests-db
+                (templated-select1-record-query {:id 1}))))
+
+  (is (= nil
+         (qry-> tests-db
+                (templated-select1-record-query {:id 2}))))
+
+  )
+
+
+
+
+(deftest templated-select-records
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS templated_select_records;")
+    (execute cnx "CREATE TABLE templated_select_records (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO templated_select_records (name) VALUES ('bob'),('bill');"))
+
+
+  (def-select templated-select-records-query
+    {:file "taoclj/foundation/sql/templated_select_records.sql"})
+
+
+  (is (= [{:id 1 :name "bob"}]
+         (qry-> tests-db
+                (templated-select-records-query {:ids [1]}))))
+
+    (is (= [{:id 1 :name "bob"} {:id 2 :name "bill"}]
+         (qry-> tests-db
+                (templated-select-records-query {:ids [1 2]}))))
+
+  (is (= nil
+         (qry-> tests-db
+                (templated-select-records-query {:ids [3]}))))
+
+  )
+
+
+(deftest templated-transform
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS templated_transform;")
+    (execute cnx "CREATE TABLE templated_transform (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO templated_transform (name) VALUES ('bob'),('bill');"))
+
+
+  (def-select templated-select-records-query
+    {:file "taoclj/foundation/sql/templated_transform.sql"
+     :transform #(map :name %)})
+
+  (is (= ["bob" "bill"]
+         (qry-> tests-db
+                (templated-select-records-query {}))))
+
+  )
 
 
 
@@ -76,12 +198,7 @@
 
 
 
-
-
-
 ; (run-tests 'taoclj.foundation-test)
-
-
 
 
 ;; (trx-> datasource

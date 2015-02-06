@@ -26,9 +26,6 @@ Status: Work in Progress, hardly anything functional.
 ## TODO/Questions
 
 - unit test with-rs
-- break param setting into different namespace
-- clean up and unit test current functionality
-+ map instants/timestamps
 - sort out return from inserts that don't have generated keys
 - handle insert of sequence of maps
 - handle vector based insert format
@@ -36,14 +33,7 @@ Status: Work in Progress, hardly anything functional.
 - update with where clause
 
 
-How to support postgres arrays as well as lists of items?
 
-
-
-
-I wonder if we could do a select/diff and issue only changed columns as updates?
-I wonder if we could check concurrency doing this as well?
-Some sort of concurrency check system?
 
 
 

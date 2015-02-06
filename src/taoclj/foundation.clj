@@ -24,13 +24,12 @@
              (read-resultsets statement nil))))))
 
 ;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-;  (execute [] cnx "select * from insert_single_record;" )
-;)
+;  (execute [] cnx "select * from insert_single_record;" ) )
 
 
 
 
-
+; move to foundation.reading? writing? combine reading+writing?
 (defn execute-prepared-query
   "Sets parameter values and executes a jdbc prepared statement."
   [cnx compiled-query]
@@ -44,98 +43,89 @@
 
 
 
+; move over to foundation.dsl namespace?
+(defn execute-select [rs cnx table-name columns where-equals single?]
+  (let [where-columns (keys where-equals)
+        limit    (if single? 1 nil)
+        compiled {:sql (to-sql-select table-name columns where-columns limit)
+                  :param-values (map where-equals where-columns)}]
+     (conj rs
+           (let [result (execute-prepared-query cnx compiled)]
+             (if single? (first result) result)))))
 
-; *** simple select dsl  *********************
+
+
+
+; move over to foundation.dsl namespace??
+(defn generate-def-select [name options single?]
+  (let [queries      (gensym "queries")
+        scanned      (gensym "scanned-query")
+        rs           (gensym "rs")
+        cnx          (gensym "cnx")
+        params       (gensym "params")
+        compiled     (gensym "compiled")
+        transform    (gensym "transform")
+        results1     (gensym "results1")
+        results2     (gensym "results2")]
+    `(def ~name
+       (let [~queries (~load-template ~options)
+             ~transform ~(if (:transform options) (:transform options) (fn [r] r))]
+         (fn [~rs ~cnx ~params]
+           (let [~scanned      (first ~queries)
+                 ~compiled     (compile-query ~scanned ~params)]
+             (conj ~rs
+
+                   (let [~results1 (execute-prepared-query ~cnx ~compiled)
+                         ~results2 ~(if single? `(first ~results1) results1) ]
+
+                     (if (nil? ~results2) ~results2
+                       (~transform ~results2))
+
+                     )
+
+                   ; assoc rest of queries
+                   ))))))
+  )
+
+; (generate-def-select 'select-session {} true)
+
+
+
+
+; *** selects  *********************
 
 (defn select
   ([rs cnx table-name where-equals]
-   (select rs cnx table-name nil where-equals))
-
+   (execute-select rs cnx table-name nil where-equals false))
   ([rs cnx table-name columns where-equals]
-    (let [where-columns (keys where-equals)
-          compiled {:sql (to-sql-select table-name columns where-columns nil)
-                    :param-values (map where-equals where-columns)}]
-      (conj rs (execute-prepared-query cnx compiled)))))
-
-;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-;  (select [] cnx :insert-single-record {:id 2} )
-;)
+   (execute-select rs cnx table-name columns where-equals false)))
 
 
-
-
-
-; should select1 throw exception if more than 1 record is found? yes?
-; should select1 throw exception of no records are found? return nil?
 (defn select1
   ([rs cnx table-name where-equals]
-   (select1 rs cnx table-name nil where-equals))
-
+    (execute-select rs cnx table-name nil where-equals true))
   ([rs cnx table-name columns where-equals]
-   (let [where-columns (keys where-equals)
-         compiled {:sql (to-sql-select table-name columns where-columns 1)
-                   :param-values (map where-equals where-columns)}]
-     (conj rs
-           (first (execute-prepared-query cnx compiled)))
-
-     )))
+    (execute-select rs cnx table-name columns where-equals true)))
 
 ;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-;  (select1 [] cnx :insert-single-record {:id 2} )
-;  )
-
-
-
+;  (select [] cnx :insert-single-record {:id 2} ) )
 
 
 
 (defmacro def-select [name options]
-  (let [queries      (gensym "queries")
-        scanned      (gensym "scanned-query")
-        rs           (gensym "rs")
-        cnx          (gensym "cnx")
-        params       (gensym "params")
-        compiled     (gensym "compiled")]
-    `(def ~name
-       (let [~queries (~load-template ~options)]
-         (fn [~rs ~cnx ~params]
-           (let [~scanned      (first ~queries)
-                 ~compiled     (compile-query ~scanned ~params)]
-             (conj ~rs
-                   (execute-prepared-query ~cnx ~compiled)
-                   ; assoc rest of queries
-                   )))))))
-
+  (generate-def-select name options false))
 
 
 (defmacro def-select1 [name options]
-  (let [queries      (gensym "queries")
-        scanned      (gensym "scanned-query")
-        rs           (gensym "rs")
-        cnx          (gensym "cnx")
-        params       (gensym "params")
-        compiled     (gensym "compiled")]
-    `(def ~name
-       (let [~queries (~load-template ~options)]
-         (fn [~rs ~cnx ~params]
-           (let [~scanned      (first ~queries)
-                 ~compiled     (compile-query ~scanned ~params)]
-             (conj ~rs
-                   (first (execute-prepared-query ~cnx ~compiled))
-                   ; assoc rest of queries
-                   )))))))
+  (generate-def-select name options true))
 
-;; (def-select1 select1-example
-;;   {:file "taoclj/sql/test-def-select1.sql"})
+
+; (def-select1 select1-example
+;   {:file "taoclj/sql/test-def-select1.sql"})
 
 ;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
 ;;   (select1-example [] cnx {:ids [1]})
 ;; )
-
-
-
-
-
 
 
 
