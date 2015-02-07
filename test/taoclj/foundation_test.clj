@@ -177,23 +177,89 @@
 
 
 
+(deftest insert-records
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS insert_records;")
+    (execute cnx "CREATE TABLE insert_records (id serial primary key not null, name text);"))
+
+  (trx-> tests-db
+         (insert :insert-records {:name "bob"}))
+
+  (is (= [{:id 1 :name "bob"}]
+         (qry-> tests-db
+                (execute "SELECT id, name FROM insert_records;"))  ))
+
+  )
 
 
 
-;; (deftest insert-and-select-simple-record
+
+(deftest insert-multiple-records
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS insert_multiple_records;")
+    (execute cnx "CREATE TABLE insert_multiple_records (id serial primary key not null, name text);"))
+
+  (trx-> tests-db
+         (insert :insert-multiple-records [{:name "bob"} {:name "bill"}]))
+
+  (is (= [{:id 1 :name "bob"} {:id 2 :name "bill"}]
+         (qry-> tests-db
+                (execute "SELECT id, name FROM insert_multiple_records;")) ))
+  )
+
+
+
+(deftest insert-parent-child-with-rs
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS parent_records; DROP TABLE IF EXISTS child_records;")
+    (execute cnx "CREATE TABLE parent_records (id serial primary key not null, name text);")
+    (execute cnx "CREATE TABLE child_records (parent_id int not null, related_id int not null);"))
+
+  (trx-> tests-db
+         (insert :parent-records {:name "bob"})
+         (insert :child-records (with-rs 22 {:parent-id (first rs)
+                                             :related-id item})))
+
+  (is (= [ [{:id 1 :name "bob"}] [{:parent-id 1 :related-id 22}] ]
+         (qry-> tests-db
+                (execute "SELECT id, name FROM parent_records;")
+                (execute "SELECT parent_id, related_id FROM child_records;"))))
+
+  )
+
+
+
+;; (deftest insert-parent-child-with-rs-multiple-records
 
 ;;   (with-open [cnx (.getConnection tests-db)]
-;;     (execute cnx "DROP TABLE IF EXISTS insert_single_record;")
-;;     (execute cnx "CREATE TABLE insert_single_record (id serial primary key not null, first_name text);"))
+;;     (execute cnx "DROP TABLE IF EXISTS parent_records; DROP TABLE IF EXISTS child_records;")
+;;     (execute cnx "CREATE TABLE parent_records (id serial primary key not null, name text);")
+;;     (execute cnx "CREATE TABLE child_records (parent_id int not null, related_id int not null);"))
 
 ;;   (trx-> tests-db
-;;          (insert :insert-single-record {:first-name "bob"}))
+;;          (insert :parent-records {:name "bob"})
+;;          (insert :child-records (with-rs [22 33] {:parent-id (first rs)
+;;                                                   :related-id item})))
 
-;;   (is (= [{:id 1 :first-name "bob"}]
+;;   (is (= [ [{:id 1 :name "bob"}] [{:parent-id 1 :related-id 22}] ]
 ;;          (qry-> tests-db
-;;                 (execute "SELECT id, first_name FROM insert_single_record;"))))
+;;                 (execute "SELECT id, name FROM parent_records;")
+;;                 (execute "SELECT parent_id, related_id FROM child_records;"))))
 
 ;;   )
+
+
+
+
+
+
+
+
+
+(run-tests *ns*)
 
 
 

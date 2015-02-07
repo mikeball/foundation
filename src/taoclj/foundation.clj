@@ -111,6 +111,9 @@
 ;  (select [] cnx :insert-single-record {:id 2} ) )
 
 
+(select :users {:id 1})
+
+
 
 (defmacro def-select [name options]
   (generate-def-select name options false))
@@ -156,7 +159,6 @@
 ; throwing exceptions if any problems are encountered. We do this rather than
 ; attempting to validate an entire query set before proceeding. Performance/Memory!
 
-(defn insert [rs cnx table-name data]
   ; (println "data = " data)
 
   ; data can be
@@ -165,33 +167,51 @@
     ; 3 - a vector of vectors first vector is columns, following are values
     ; 4 - a function returning any of the above
 
+
+
+(defn execute-update [cnx table-name data]
+
+  (let [column-names (keys data)
+        sql          (to-sql-insert table-name column-names 1)
+        statement    (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
+
+    (set-parameter-values statement (map data column-names))
+
+    (let [rowcount       (.executeUpdate statement)
+          generated-keys (.getGeneratedKeys statement)
+          has-keys       (.next generated-keys)
+          generated-id   (.getObject generated-keys 1)]
+
+      (.close statement)
+      generated-id )
+
+      )
+  )
+
+(defn insert [rs cnx table-name data]
   (let [resolved-data (cond (map? data) data
-                            ; todo handle vector data
+                            (sequential? data) data
                             (ifn? data) (data rs)
                             :default    (throw
                                           (Exception. "Passed transform not valid!")))]
+    (conj rs
+          (cond (map? resolved-data)
+                (execute-update cnx table-name resolved-data)
 
-    ; handle multiple items to insert
+                (sequential? resolved-data)
+                (doall (map #(execute-update cnx table-name %)
+                            resolved-data))
 
-
-    (let [column-names (keys resolved-data)
-          sql       (to-sql-insert table-name column-names 1)
-          statement (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
-
-
-      (set-parameter-values statement (map resolved-data column-names))
-
-        (let [rowcount       (.executeUpdate statement)
-              generated-keys (.getGeneratedKeys statement)
-              has-keys       (.next generated-keys)
-              keys-meta      (.getMetaData generated-keys)
-              generated-id   (.getObject generated-keys 1)]
+                :default
+                (throw (Exception. "Invalid data structure"))))))
 
 
-          (.close statement)
-          (conj rs generated-id)
+;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;;   (insert [] cnx :insert-multiple-records {:name "bob"}))
 
-      ))))
+
+;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;;   (insert [] cnx :insert-multiple-records [{:name "bob"} {:name "bill"}]))
 
 
 
@@ -203,92 +223,51 @@
 
 
 
+; *** result set and data transform helpers *********************
+
+(defn validate-with-rs-template [columns item-structure]
+  ; columns must be nil or vector of keywords/strings
+  ; item template structure must be a vector or map
+  )
+
+; (validate columns item-structure)
 
 
-;; ; *** result set and data transform helpers *********************
+; todo unit test this
+; todo move back into main namespace because it's a primary function...
+(defn- with-rs*
+  ([data item-template]
+   (with-rs* data nil item-template))
 
-;; (defn validate-with-rs-template [columns item-structure]
-;;   ; columns must be nil or vector of keywords/strings
-;;   ; item template structure must be a vector or map
-;;   )
+  ([data columns item-template]
+    (validate-with-rs-template columns item-template)
 
-;; ; (validate columns item-structure)
+    `(fn [~'rs]
+       (let [~'item ~data]
+         ~(if-not (sequential? data)
 
+            `(if ~columns
+               (concat [~columns] [~item-template])
+               ~item-template )
 
-;; ; todo unit test this
-;; ; todo move back into main namespace because it's a primary function...
-;; (defn- with-rs*
-;;   ([data item-template]
-;;    (with-rs* data nil item-template))
+            `(if ~columns
+               (concat [~columns] (map (fn [~'item] ~item-template) ~data))
+               (map (fn [~'item] ~item-template) ~data))
 
-;;   ([data columns item-template]
-;;     (validate columns item-template)
-
-;;     `(fn [~'rs]
-;;        (let [~'item ~data]
-;;          ~(if-not (sequential? data)
-
-;;             `(if ~columns
-;;                (concat [~columns] [~item-template])
-;;                ~item-template )
-
-;;             `(if ~columns
-;;                (concat [~columns] (map (fn [~'item] ~item-template) ~data))
-;;                (map (fn [~'item] ~item-template) ~data))
-
-;;             )))))
+            )))))
 
 
-;; (defmacro with-rs [& args] (apply with-rs* args))
+(defmacro with-rs [& args] (apply with-rs* args))
 
 
 
-;; ((with-rs 22 {:user-id (first rs)
-;;               :role-id item})
-;;  [11])
+((with-rs [22 33] {:user-id (first rs)
+              :role-id item})
+ [11])
 
 ;; (macroexpand '(with-rs [22 33] nil {:user-id (first rs)
 ;;                                     :role-id item})
 ;; )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-;; ; https://github.com/clojure/clojure/blob/clojure-1.6.0/src/clj/clojure/core.clj#L5244
-;; ; https://github.com/clojure/java.jdbc/blob/master/src/main/clojure/clojure/java/jdbc.clj#L362
-
-
-; http://clojure-doc.org/articles/ecosystem/java_jdbc/using_sql.html
-; http://docs.oracle.com/javase/tutorial/jdbc/basics/sqldatasources.html
-; http://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#prepareStatement-java.lang.String-int-
-
-
-
-
-
-;; (execute datasource "create table ...")
-;; => true
-
-;; (execute datasource "select * from users;")
-;; => [{:name "bob"} {:name "bill"}]
-
-
-;; (execute [:a] datasource "create table ...")
-;; => [:a true]
-
-;; (execute [:a] datasource "select * from users;")
-;; => [:a [{:name "bob"} {:name "bill"}]]
 
 
 

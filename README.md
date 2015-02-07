@@ -7,42 +7,31 @@ Status: Work in Progress, hardly anything functional.
 
 
 
-
 ## Goals
-  Focus on postgresql support only
   Easy to use correctly
-  Support extended postgresql datatypes (eg arrays and json)
+  Support postgresql extended datatypes (eg arrays, json, hstore, gis)
 
 
 ## Features
 - automatic conversion from dash to underscore and back
-- upper/lower casing is ignored, rather than automatically being lower cased.
-- automatic conversion of java.time.Instant to java.sql.timestamp
-
-
-
-
-
-## TODO/Questions
-
-- unit test with-rs
-- sort out return from inserts that don't have generated keys
-- handle insert of sequence of maps
-- handle vector based insert format
-- delete with where clause
-- update with where clause
-
-
-
-
+- casing is ignored, rather than automatically being lower cased.
+- automatic conversion from/to java.time.Instant
 
 
 
 
 ## Explicitly Not Included
+
+Support for other databases such as MySql, MS Sql, Oracle, etc.
+
 Data definition sql and schema migrations. We believe that these concerns should
 be handled outside of the data layer of your application and no plans to include
 these into this library.
+
+
+
+
+
 
 
 
