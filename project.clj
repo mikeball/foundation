@@ -6,9 +6,9 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
-                 [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.3"]
-                 [com.zaxxer/HikariCP "2.2.5"]
+  :dependencies [[org.clojure/clojure "1.7.0-RC1"]
+                 [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.5"]
+                 [com.zaxxer/HikariCP "2.3.8"]
 
 
                  ; for some reason this was required to remove

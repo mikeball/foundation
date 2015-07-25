@@ -3,7 +3,7 @@
 A clojure data access library for postgresql.
 
 
-Status: Work in Progress, hardly anything functional.
+Status: Work in Progress, but usable.
 
 
 
