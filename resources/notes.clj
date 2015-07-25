@@ -30,6 +30,47 @@
 (part-search {:query "cre"})
 
 
+; sql
+select product_id, name
+  from products
+  where {search-clauses}
+
+
+
+
+
+
+
+
+
+
+; ********************************
+
+
+; this is a query example loading a single user
+
+
+select user_id, account_id, password
+  from users
+  where user_id = :user_id
+
+--:use account_id
+
+--:query-as account
+select name
+  from accounts
+  where account_id = :account_id
+
+--:query-as roles
+select r.uid
+  from user_roles ur
+    inner join roles r on ur.role_id = r.role_id
+  where ur.user_id = :user_id
+
+
+
+;********************************
+
 
 ; somehow handle dynamic ordering
 
