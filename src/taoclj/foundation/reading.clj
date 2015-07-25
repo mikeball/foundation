@@ -14,7 +14,7 @@
 
         (= column-type Types/ARRAY)
         (let [pg-array (.getArray result-set index)]
-          (vec (.getArray pg-array))
+          (vec (.getArray pg-array)))
 
         :default
         (.getObject result-set index))

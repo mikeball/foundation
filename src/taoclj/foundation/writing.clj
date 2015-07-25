@@ -2,6 +2,27 @@
   (:import [java.sql Statement Timestamp]))
 
 
+(defn to-sql-array [statement value]
+
+  (let [java-array (into-array value)
+        value-type (class (first value))
+        array-type (cond (= value-type java.lang.String)
+                         "text"
+
+                         (or (= value-type java.lang.Integer)
+                             (= value-type java.lang.Long))
+                         "integer"
+
+                         :default
+                         (throw (Exception. "Array type not supported!")))
+
+        connection (.getConnection statement)]
+
+      (.createArrayOf connection array-type java-array)
+
+  ))
+
+
 (defn- set-parameter-value! [^Statement statement ^Long position value]
   ; (println "parameter cls = " (class value))
   (if value
@@ -11,6 +32,10 @@
             (= cls java.lang.Long)    (.setLong statement position value)
             (= cls java.time.Instant) (.setTimestamp statement position
                                                      (Timestamp/from value))
+
+            (sequential? value) ; if this is a vector/list, convert to a sql array
+            (.setArray statement position (to-sql-array statement value))
+
             :default
             (throw (Exception. "Parameter type not mapped!"))))))
 

@@ -185,7 +185,7 @@
                             (sequential? data) data
                             (ifn? data) (data rs) ; perhaps validate the data returned?
                             :default    (throw
-                                          (Exception. "Oarameter data is not valid!")))]
+                                          (Exception. "Parameter data is not valid!")))]
     (conj rs
           (cond (map? resolved-data)
                 (execute-prepared-insert cnx table-name resolved-data)

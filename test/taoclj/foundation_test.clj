@@ -213,6 +213,24 @@
   )
 
 
+(deftest insert-records-arrays
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS insert_records_arrays;")
+    (execute cnx (str "CREATE TABLE insert_records_arrays (id serial primary key not null,"
+                      "   names text[] not null, numbers integer[] not null);")))
+
+  (trx-> tests-db
+         (insert :insert-records-arrays
+                 {:names ["bob" "bill"] :numbers [101 202]}))
+
+  (is (= [{:id 1 :names ["bob" "bill"] :numbers [101 202]}]
+         (qry-> tests-db
+                (execute "SELECT id, names, numbers FROM insert_records_arrays;"))  ))
+
+  )
+
+
 
 
 (deftest insert-multiple-records
