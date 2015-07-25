@@ -6,6 +6,24 @@
 
 ; *** result set readers *********************
 
+
+(defn convert-from-db [column-type result-set index]
+
+  (cond (= column-type Types/TIMESTAMP)
+        (.toInstant (.getTimestamp result-set index))
+
+        (= column-type Types/ARRAY)
+        (let [pg-array (.getArray result-set index)]
+          (vec (.getArray pg-array))
+
+        :default
+        (.getObject result-set index))
+
+  )
+
+
+
+
 (defn read-resultset
   ([^java.sql.ResultSet rs] (read-resultset rs nil))
   ([^java.sql.ResultSet rs result-format]
@@ -20,16 +38,9 @@
                       (throw (Exception. "ResultSet must have unique column names")))
 
           get-row-vals (fn [] (map (fn [^Integer i]
-
                                      ; map types back from DB!
                                      (let [ct (.getColumnType rsmeta i)]
-
-                                       (cond (= ct Types/TIMESTAMP)
-                                             (.toInstant (.getTimestamp rs  i))
-
-                                             :default
-                                             (.getObject rs  i))))
-
+                                       (convert-from-db ct rs i) ))
                                    idxs))
 
           read-rows (fn readrow []

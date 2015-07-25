@@ -1,12 +1,14 @@
 (ns taoclj.foundation
-  (:require [taoclj.foundation.dsl :refer [to-sql-select to-sql-insert]]
+  (:require [taoclj.foundation.dsl :refer [to-sql-select to-sql-insert
+                                           to-sql-delete to-sql-update]]
+
             [taoclj.foundation.datasources :as datasources]
             [taoclj.foundation.reading :refer [read-resultsets read-resultset]]
             [taoclj.foundation.writing :refer [set-parameter-values]]
             [taoclj.foundation.templates.loading :refer [load-template]]
             [taoclj.foundation.templates.generation :refer [compile-query]])
   (:import [java.time Instant]
-           [java.sql Statement]))
+           [java.sql Connection Statement ]))
 
 
 
@@ -29,6 +31,9 @@
 
 
 
+
+; ***** Execution of prepared statements  *********************
+
 ; move to foundation.reading? writing? combine reading+writing?
 (defn execute-prepared-query
   "Sets parameter values and executes a jdbc prepared statement."
@@ -40,6 +45,29 @@
         (set-parameter-values statement (:param-values compiled-query))
         (-> (.executeQuery statement)
             (read-resultset nil))))
+
+
+(defn execute-prepared-insert [cnx table-name data]
+  (let [column-names (keys data)
+        sql          (to-sql-insert table-name column-names 1)
+        statement    (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
+    (set-parameter-values statement (map data column-names))
+    (let [rowcount       (.executeUpdate statement)
+          generated-keys (.getGeneratedKeys statement)
+          has-keys       (.next generated-keys)
+          generated-id   (.getObject generated-keys 1)]
+
+      (.close statement)
+      generated-id ) ))
+
+
+
+
+
+
+; ***** End Execution of prepared statements  *********************
+
+
 
 
 
@@ -107,11 +135,10 @@
   ([rs cnx table-name columns where-equals]
     (execute-select rs cnx table-name columns where-equals true)))
 
+
 ;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-;  (select [] cnx :insert-single-record {:id 2} ) )
-
-
-(select :users {:id 1})
+;  (select [] cnx :insert-single-record {:id 2} )
+;)
 
 
 
@@ -141,69 +168,34 @@
 
 
 
+
+
+
 ; *** insert/update/delete *********************
 
-; insert single map
-
-; insert vector of maps
-  ; never batch, record columns might be different
-  ; separate prepared statement for each map/record
-
-; insert vector of header/row vectors
-  ; single statement
-  ; eventually we might want to batch in row counts of ???
-    ; for very large insert sets that is
+; data can be
+; 1 - a single map with column names/values
+; 2 - a vector of maps
+; 4 - a function returning any of the above
 
 
-; we will take a strategy of validating/verifying on the fly and
-; throwing exceptions if any problems are encountered. We do this rather than
-; attempting to validate an entire query set before proceeding. Performance/Memory!
-
-  ; (println "data = " data)
-
-  ; data can be
-    ; 1 - a single map with column names/values
-    ; 2 - a vector of maps
-    ; 3 - a vector of vectors first vector is columns, following are values
-    ; 4 - a function returning any of the above
-
-
-
-(defn execute-update [cnx table-name data]
-
-  (let [column-names (keys data)
-        sql          (to-sql-insert table-name column-names 1)
-        statement    (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
-
-    (set-parameter-values statement (map data column-names))
-
-    (let [rowcount       (.executeUpdate statement)
-          generated-keys (.getGeneratedKeys statement)
-          has-keys       (.next generated-keys)
-          generated-id   (.getObject generated-keys 1)]
-
-      (.close statement)
-      generated-id )
-
-      )
-  )
 
 (defn insert [rs cnx table-name data]
   (let [resolved-data (cond (map? data) data
                             (sequential? data) data
-                            (ifn? data) (data rs)
+                            (ifn? data) (data rs) ; perhaps validate the data returned?
                             :default    (throw
-                                          (Exception. "Passed transform not valid!")))]
+                                          (Exception. "Oarameter data is not valid!")))]
     (conj rs
           (cond (map? resolved-data)
-                (execute-update cnx table-name resolved-data)
+                (execute-prepared-insert cnx table-name resolved-data)
 
                 (sequential? resolved-data)
-                (doall (map #(execute-update cnx table-name %)
+                (doall (map #(execute-prepared-insert cnx table-name %)
                             resolved-data))
 
                 :default
-                (throw (Exception. "Invalid data structure"))))))
+                (throw (Exception. "Invalid data parameter"))))))
 
 
 ;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
@@ -212,65 +204,6 @@
 
 ;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
 ;;   (insert [] cnx :insert-multiple-records [{:name "bob"} {:name "bill"}]))
-
-
-
-
-
-
-
-
-
-
-
-; *** result set and data transform helpers *********************
-
-(defn validate-with-rs-template [columns item-structure]
-  ; columns must be nil or vector of keywords/strings
-  ; item template structure must be a vector or map
-  )
-
-; (validate columns item-structure)
-
-
-; todo unit test this
-; todo move back into main namespace because it's a primary function...
-(defn- with-rs*
-  ([data item-template]
-   (with-rs* data nil item-template))
-
-  ([data columns item-template]
-    (validate-with-rs-template columns item-template)
-
-    `(fn [~'rs]
-       (let [~'item ~data]
-         ~(if-not (sequential? data)
-
-            `(if ~columns
-               (concat [~columns] [~item-template])
-               ~item-template )
-
-            `(if ~columns
-               (concat [~columns] (map (fn [~'item] ~item-template) ~data))
-               (map (fn [~'item] ~item-template) ~data))
-
-            )))))
-
-
-(defmacro with-rs [& args] (apply with-rs* args))
-
-
-
-((with-rs [22 33] {:user-id (first rs)
-              :role-id item})
- [11])
-
-;; (macroexpand '(with-rs [22 33] nil {:user-id (first rs)
-;;                                     :role-id item})
-;; )
-
-
-
 
 
 
@@ -320,9 +253,6 @@
 
 
 
-
-
-
 ;; ; Insert multiple syntx... map format results in multiple statements.
 ;; ; could we perhaps cache across PreparedStatements?
 ;; (trx-> datasource
@@ -341,7 +271,105 @@
 
 
 
-;; ; DELETE syntax
+
+
+(defn validate-with-rs-template [columns item-structure]
+  ; columns must be nil or vector of keywords/strings
+  ; item template structure must be a vector or map
+  )
+; (validate columns item-structure)
+
+
+
+; todo: can this be moved somwhere else?
+(defn- with-rs*
+  ([data item-template]
+   (with-rs* data nil item-template))
+
+  ([data columns item-template]
+    (validate-with-rs-template columns item-template)
+
+    `(fn [~'rs]
+       (let [~'item ~data]
+         ~(if-not (sequential? data)
+
+            `(if ~columns
+               (concat [~columns] [~item-template])
+               ~item-template )
+
+            `(if ~columns
+               (concat [~columns] (map (fn [~'item] ~item-template) ~data))
+               (map (fn [~'item] ~item-template) ~data))
+
+            )))))
+
+
+(defmacro with-rs [& args] (apply with-rs* args))
+
+
+;; ((with-rs [22 33] {:user-id (first rs)
+;;               :role-id item})
+;;  [11])
+
+;; (macroexpand '(with-rs [22 33] nil {:user-id (first rs)
+;;                                     :role-id item})
+;; )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+; DELETE syntax
+
+(defn execute-prepared-delete [cnx table-name where-clause]
+  (let [where-columns (keys where-clause)
+        sql           (to-sql-delete table-name where-columns)
+        statement     (.prepareStatement cnx sql) ]
+
+    (set-parameter-values statement (map where-clause where-columns))
+
+    (let [rowcount (.executeUpdate statement)]
+      (.close statement)
+      rowcount )))
+
+
+
+(defn delete [rs cnx table-name where-clause]
+  (conj rs (execute-prepared-delete cnx table-name where-clause)))
+
+
+
+;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;;   (delete [] cnx :insert-records {})
+;; )
+
+;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;;   (execute [] cnx "select * from insert_records;")
+;; )
+
+;; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;;   (execute [] cnx "insert into insert_records (name) values ('bob'),('bill');")
+;; )
+
+
+
 ;; (trx-> datasource
 
 ;;        ; delete using maps for where
@@ -367,6 +395,40 @@
 
 
 
+
+
+
+
+
+
+(defn update
+  ; I don't know if I'm happy with this syntx for multiple rows needing updates...
+  "Executes simple update statements.
+
+  (trx-> datasource
+         (update :users {:name \"joe\"} {:id 1}))
+  "
+  [rs ^Connection cnx table-name columns where]
+
+  (let [column-names  (keys columns)
+        where-columns (keys where)
+        sql           (to-sql-update table-name column-names where-columns)
+        param-values  (concat (map columns column-names)
+                              (map where where-columns))
+        statement     (.prepareStatement cnx sql) ]
+    (set-parameter-values statement param-values)
+    (let [rowcount (.executeUpdate statement)]
+      (.close statement)
+      (conj rs rowcount)) ))
+
+
+; (with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
+;   (update [] cnx :update-records {:id 1 :name "joe"} {:id 2})
+; )
+
+
+; (trx-> taoclj.foundation.tests-config/tests-db
+;       (update :update-records {:name "joe"} {:id 1}))
 
 
 
@@ -406,7 +468,9 @@
 
 
 
-; Complex DELETE/UPDATE are pushed to sql files
+
+
+
 
 
 
@@ -423,7 +487,7 @@
 
 ; vector defaults to array in infers type? require meta declaration?
 ; clj/vector(ints)        -> array int
-; clj/vector(strings)     -> array nvarchar/text?
+; clj/vector(strings)     -> array text
 
 ; should hstore or json be default for map?? neither??
 ; clj/map                 -> json/jsonb  ; clj/map defaults to json??

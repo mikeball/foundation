@@ -58,7 +58,7 @@
 ; (to-sql-select :users nil [:id] 1)
 
 
-(to-sql-select :insert-single-record nil nil nil)
+; (to-sql-select :insert-single-record nil nil nil)
 
 
 (defn to-sql-insert [table-name columns row-count]

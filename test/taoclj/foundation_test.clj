@@ -100,6 +100,24 @@
   )
 
 
+(deftest select-arrays
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS select_arrays;")
+    (execute cnx "CREATE TABLE select_arrays (id serial primary key not null, names text[], numbers integer[]);")
+    (execute cnx (str "INSERT INTO select_arrays (names,numbers) VALUES "
+                      "('{\"bob\", \"bill\"}','{101, 202}');")))
+
+  (is (= {:id 1 :names ["bob" "bill"] :numbers [101 202]}
+         (qry-> tests-db
+                (select1 :select-arrays {:id 1}))))
+
+  )
+
+
+
+
+
 
 ; ********** Templated Query Tests ***********************
 
@@ -175,6 +193,8 @@
 
 
 
+
+; ********** DSL Tests ***********************
 
 
 (deftest insert-records
@@ -255,11 +275,48 @@
 
 
 
+(deftest delete-records
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS delete_records;")
+    (execute cnx "CREATE TABLE delete_records (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO delete_records (name) values ('bob'),('bill');"))
+
+  (trx-> tests-db
+         (delete :delete-records {:id 1}))
+
+  (is (= [{:id 2 :name "bill"}]
+         (qry-> tests-db
+                (execute "SELECT id, name FROM delete_records;"))))
+
+  )
 
 
 
 
-(run-tests *ns*)
+(deftest update-records
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS update_records;")
+    (execute cnx "CREATE TABLE update_records (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO update_records (name) values ('bob'),('bill');"))
+
+  (trx-> tests-db
+         (update :update-records {:name "joe"} {:id 2}))
+
+  (is (= [{:id 2 :name "joe"}]
+         (qry-> tests-db
+                (execute "SELECT id, name FROM update_records where id=2;"))))
+
+  )
+
+
+
+
+
+
+
+; (run-tests *ns*)
 
 
 
