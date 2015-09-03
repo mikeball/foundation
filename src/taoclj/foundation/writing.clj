@@ -30,8 +30,8 @@
       (cond (= cls java.lang.String)  (.setString statement position value)
             (= cls java.lang.Integer) (.setInt statement position value)
             (= cls java.lang.Long)    (.setLong statement position value)
-            (= cls java.time.Instant) (.setTimestamp statement position
-                                                     (Timestamp/from value))
+            (= cls java.time.Instant) (.setTimestamp statement position (Timestamp/from value))
+            (= cls java.util.UUID)    (.setObject statement position value)
 
             (sequential? value) ; if this is a vector/list, convert to a sql array
             (.setArray statement position (to-sql-array statement value))

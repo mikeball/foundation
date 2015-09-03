@@ -87,20 +87,41 @@
   (let [result (qry-> tests-db
                       (select1 :datetimes-are-round-tripped {:id 1}))]
 
-
     (is (= java.time.Instant   (-> result :ex1 class)))
-    ; (is (= java.lang.Integer (-> result :ex2 class)))
-    ; (is (= java.lang.Long    (-> result :ex3 class)))
 
     ))
+
 
 
 ; (qry-> tests-db
 ;        (select1 :datetimes-are-round-tripped {:id 1})
 ;)
 
-; (run-tests 'taoclj.foundation.mappings-test)
+
+(deftest uuid-types-are-round-tripped
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS uuids_are_round_tripped;")
+    (execute cnx (str "CREATE TABLE uuids_are_round_tripped (id serial primary key not null,"
+                      "ex1 uuid);")))
+
+  (trx-> tests-db
+         (insert :uuids-are-round-tripped {:ex1 (java.util.UUID/randomUUID)}))
+
+  (let [result (qry-> tests-db
+                      (select1 :uuids-are-round-tripped {:id 1}))]
+
+    (is (= java.util.UUID   (-> result :ex1 class)))
+
+    ))
 
 
-; ints are converted ... to int/long/etc??
-; timestampsz are converted to Instant
+
+
+
+
+
+; (run-tests 'taoclj.foundation.naming-test)
+
+
+
