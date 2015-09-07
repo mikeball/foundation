@@ -16,6 +16,7 @@
         (let [pg-array (.getArray result-set index)]
           (vec (.getArray pg-array)))
 
+
         :default
         (.getObject result-set index))
 

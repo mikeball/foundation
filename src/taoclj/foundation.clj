@@ -43,10 +43,11 @@
 ; * templated selects  *********************
 
 ; just make this def-query, get rid of select and select1 notion for templated queries?
-(defmacro def-select [name options]
-  (templating/generate-def-select name options false))
+(defmacro def-query [name options]
+  (templating/generate-def-query name options))
 
 
+; remove this? do we really need this?
 (defmacro def-select1 [name options]
   (templating/generate-def-select name options true))
 

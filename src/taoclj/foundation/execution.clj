@@ -30,17 +30,21 @@
   "Sets parameter values and executes a jdbc prepared statement."
   [cnx compiled-query]
   ; (println "*** (:sql parsed) " (:sql compiled-query))
-  ; (println "*** (:params parsed) " (:params compiled-query))
 
   (let [statement (.prepareStatement cnx (:sql compiled-query))]
-        (writing/set-parameter-values statement (:param-values compiled-query))
 
-    ; convert to .execute so we can handle inserts/updates too...
-      (-> (.executeQuery statement)
+    (writing/set-parameter-values statement (:param-values compiled-query))
 
-          ; then check to see if a what type of query was returned
-            (reading/read-resultset nil))))
+    (if (.execute statement)
+      ; .execute returns true there is a result set present, so read it
+      (reading/read-resultset (.getResultSet statement) nil)
 
+      ; .execute returns false if the first result is an update count
+      (let [rowcount (.getUpdateCount statement)]
+        (.close statement)
+        {:row-count rowcount})
+
+      )))
 
 
 (defn execute-select [rs cnx table-name columns where-equals single?]
@@ -58,6 +62,7 @@
   (let [column-names (keys data)
         sql          (dsl/to-sql-insert table-name column-names 1)
         statement    (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
+
     (writing/set-parameter-values statement (map data column-names))
 
     (let [rowcount       (.executeUpdate statement)
@@ -67,6 +72,11 @@
 
       (.close statement)
       generated-id ) ))
+
+
+
+
+
 
 
 

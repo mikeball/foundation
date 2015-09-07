@@ -1,21 +1,47 @@
 (ns taoclj.foundation.templating
-
   (:require [taoclj.foundation.execution :as execution]
             [taoclj.foundation.templating.loading :refer [load-template]]
             [taoclj.foundation.templating.generation :refer [compile-query]]
-            )
+            ) )
 
-  ; (:import [java.time Instant]
-  ;         [java.sql Connection Statement ])
 
-  )
+
+
+(defn generate-def-query [name options]
+  (let [queries      (gensym "queries")
+        scanned      (gensym "scanned-query")
+        rs           (gensym "rs")
+        cnx          (gensym "cnx")
+        params       (gensym "params")
+        compiled     (gensym "compiled")
+        transform    (gensym "transform")
+        result       (gensym "result")]
+    `(def ~name
+       (let [~queries (~load-template ~options)
+             ~transform ~(if (:transform options) (:transform options) (fn [r] r))]
+
+         (fn [~rs ~cnx ~params]
+           (let [~scanned      (first ~queries)
+                 ~compiled     (compile-query ~scanned ~params)]
+             (conj ~rs
+
+                   (let [~result (execution/execute-prepared-query ~cnx ~compiled) ]
+
+                     (if (nil? ~result) ~result
+                       (~transform ~result))
+
+                     ) )))
+
+         ))))
+
+
 
 
 
 ; convert name to generate-def-query?
 ; compile-query should be statement delimiter(;)
 ;   aware and parse multiple queries if present
-; convert to use multiple prepared queriesjdbc batching when sending/receiving query
+; convert to use multiple prepared queries
 
 (defn generate-def-select [name options single?]
   (let [queries      (gensym "queries")
