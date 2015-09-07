@@ -27,10 +27,9 @@
     https://gist.github.com/ghadishayban/d2f31961deba98ee4595
 
 
-- ability to easily include foreign key related records.
+- ability to easily include foreign key related records using dsl? Good idea or bad?
 
 
-- reorganize/combine reading + writing namespaces into one?
 - sort out return from inserts that don't have generated keys (user-roles)
 
 
