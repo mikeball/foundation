@@ -1,140 +1,38 @@
 (ns taoclj.foundation
-  (:require [taoclj.foundation.dsl :refer [to-sql-select to-sql-insert
+  (:require [taoclj.foundation.dsl :refer [to-sql-insert
                                            to-sql-delete to-sql-update]]
 
             [taoclj.foundation.datasources :as datasources]
+            [taoclj.foundation.execution :as execution]
+            [taoclj.foundation.templating :as templating]
+
             [taoclj.foundation.reading :refer [read-resultsets read-resultset]]
             [taoclj.foundation.writing :refer [set-parameter-values]]
-            [taoclj.foundation.templates.loading :refer [load-template]]
-            [taoclj.foundation.templates.generation :refer [compile-query]])
+
+
+            )
   (:import [java.time Instant]
            [java.sql Connection Statement ]))
 
 
 
 
-(defn execute
-  "Executes raw, unsafe sql. Uses jdbc statement under the hood so we can
-  support multiple resultsets, but which can not be parameterized."
-  ([cnx sql] (execute [] cnx sql))
-  ([rs cnx sql]
-   (let [statement  (.createStatement cnx)
-         has-result (.execute statement sql)]
-     (conj rs
-           (if-not has-result ; was a result set returned?
-             (do (.close statement) true) ; return some metadata??
-             (read-resultsets statement nil))))))
-
-;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
-;  (execute [] cnx "select * from insert_single_record;" ) )
 
 
-
-
-
-; ***** Execution of prepared statements  *********************
-
-; move to foundation.reading? writing? combine reading+writing?
-(defn execute-prepared-query
-  "Sets parameter values and executes a jdbc prepared statement."
-  [cnx compiled-query]
-  ; (println "*** (:sql parsed) " (:sql compiled-query))
-  ; (println "*** (:params parsed) " (:params compiled-query))
-
-  (let [statement (.prepareStatement cnx (:sql compiled-query))]
-        (set-parameter-values statement (:param-values compiled-query))
-        (-> (.executeQuery statement)
-            (read-resultset nil))))
-
-
-(defn execute-prepared-insert [cnx table-name data]
-  (let [column-names (keys data)
-        sql          (to-sql-insert table-name column-names 1)
-        statement    (.prepareStatement cnx sql (Statement/RETURN_GENERATED_KEYS))]
-    (set-parameter-values statement (map data column-names))
-    (let [rowcount       (.executeUpdate statement)
-          generated-keys (.getGeneratedKeys statement)
-          has-keys       (.next generated-keys)
-          generated-id   (.getObject generated-keys 1)]
-
-      (.close statement)
-      generated-id ) ))
-
-
-
-
-
-
-; ***** End Execution of prepared statements  *********************
-
-
-
-
-
-; move over to foundation.dsl namespace?
-(defn execute-select [rs cnx table-name columns where-equals single?]
-  (let [where-columns (keys where-equals)
-        limit    (if single? 1 nil)
-        compiled {:sql (to-sql-select table-name columns where-columns limit)
-                  :param-values (map where-equals where-columns)}]
-     (conj rs
-           (let [result (execute-prepared-query cnx compiled)]
-             (if single? (first result) result)))))
-
-
-
-
-; move over to foundation.dsl namespace??
-(defn generate-def-select [name options single?]
-  (let [queries      (gensym "queries")
-        scanned      (gensym "scanned-query")
-        rs           (gensym "rs")
-        cnx          (gensym "cnx")
-        params       (gensym "params")
-        compiled     (gensym "compiled")
-        transform    (gensym "transform")
-        results1     (gensym "results1")
-        results2     (gensym "results2")]
-    `(def ~name
-       (let [~queries (~load-template ~options)
-             ~transform ~(if (:transform options) (:transform options) (fn [r] r))]
-         (fn [~rs ~cnx ~params]
-           (let [~scanned      (first ~queries)
-                 ~compiled     (compile-query ~scanned ~params)]
-             (conj ~rs
-
-                   (let [~results1 (execute-prepared-query ~cnx ~compiled)
-                         ~results2 ~(if single? `(first ~results1) results1) ]
-
-                     (if (nil? ~results2) ~results2
-                       (~transform ~results2))
-
-                     )
-
-                   ; assoc rest of queries
-                   ))))))
-  )
-
-; (generate-def-select 'select-session {} true)
-
-
-
-
-; *** selects  *********************
+; * dsl selects  *********************
 
 (defn select
   ([rs cnx table-name where-equals]
-   (execute-select rs cnx table-name nil where-equals false))
+   (execution/execute-select rs cnx table-name nil where-equals false))
   ([rs cnx table-name columns where-equals]
-   (execute-select rs cnx table-name columns where-equals false)))
+   (execution/execute-select rs cnx table-name columns where-equals false)))
 
 
 (defn select1
   ([rs cnx table-name where-equals]
-    (execute-select rs cnx table-name nil where-equals true))
+    (execution/execute-select rs cnx table-name nil where-equals true))
   ([rs cnx table-name columns where-equals]
-    (execute-select rs cnx table-name columns where-equals true)))
-
+    (execution/execute-select rs cnx table-name columns where-equals true)))
 
 ;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
 ;  (select [] cnx :insert-single-record {:id 2} )
@@ -142,12 +40,15 @@
 
 
 
+; * templated selects  *********************
+
+; just make this def-query, get rid of select and select1 notion for templated queries?
 (defmacro def-select [name options]
-  (generate-def-select name options false))
+  (templating/generate-def-select name options false))
 
 
 (defmacro def-select1 [name options]
-  (generate-def-select name options true))
+  (templating/generate-def-select name options true))
 
 
 ; (def-select1 select1-example
@@ -164,20 +65,12 @@
 
 
 
-
-
-
-
-
-
-
 ; *** insert/update/delete *********************
 
 ; data can be
 ; 1 - a single map with column names/values
 ; 2 - a vector of maps
 ; 4 - a function returning any of the above
-
 
 
 (defn insert [rs cnx table-name data]
@@ -188,10 +81,10 @@
                                           (Exception. "Parameter data is not valid!")))]
     (conj rs
           (cond (map? resolved-data)
-                (execute-prepared-insert cnx table-name resolved-data)
+                (execution/execute-prepared-insert cnx table-name resolved-data)
 
                 (sequential? resolved-data)
-                (doall (map #(execute-prepared-insert cnx table-name %)
+                (doall (map #(execution/execute-prepared-insert cnx table-name %)
                             resolved-data))
 
                 :default

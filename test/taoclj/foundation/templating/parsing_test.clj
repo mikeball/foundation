@@ -1,6 +1,6 @@
-(ns taoclj.foundation.templates.parsing-test
+(ns taoclj.foundation.templating.parsing-test
   (:require [clojure.test :refer :all]
-            [taoclj.foundation.templates.parsing :refer :all]))
+            [taoclj.foundation.templating.parsing :refer :all]))
 
 
 

@@ -1,6 +1,6 @@
-(ns taoclj.foundation.templates.loading
+(ns taoclj.foundation.templating.loading
   (:require [clojure.java.io :refer [resource]]
-            [taoclj.foundation.templates.parsing :refer [scan-sql]])
+            [taoclj.foundation.templating.parsing :refer [scan-sql]])
   (:import [java.io FileNotFoundException]))
 
 

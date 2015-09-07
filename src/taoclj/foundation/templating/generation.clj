@@ -1,4 +1,4 @@
-(ns taoclj.foundation.templates.generation
+(ns taoclj.foundation.templating.generation
   (:require [clojure.string :refer [join]]))
 
 

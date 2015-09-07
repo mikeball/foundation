@@ -1,4 +1,4 @@
-(ns taoclj.foundation.templates.parsing)
+(ns taoclj.foundation.templating.parsing)
 
 
 

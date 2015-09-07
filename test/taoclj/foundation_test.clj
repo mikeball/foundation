@@ -1,7 +1,8 @@
 (ns taoclj.foundation-test
   (:require [clojure.test :refer :all]
             [taoclj.foundation :refer :all]
-            [taoclj.foundation.tests-config :refer [tests-db]]))
+            [taoclj.foundation.tests-config :refer [tests-db]]
+            [taoclj.foundation.execution :refer [execute]]))
 
 
 (deftest can-connect

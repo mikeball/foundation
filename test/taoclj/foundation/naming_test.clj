@@ -1,8 +1,9 @@
 (ns taoclj.foundation.naming-test
   (:require [clojure.test :refer :all]
-            [taoclj.foundation :refer [trx-> qry-> execute insert select1]]
+            [taoclj.foundation :refer [trx-> qry-> insert select1]]
             [taoclj.foundation.naming :refer :all]
-            [taoclj.foundation.tests-config :refer [tests-db]])
+            [taoclj.foundation.tests-config :refer [tests-db]]
+            [taoclj.foundation.execution :refer [execute]])
   (:import [java.time Instant]
            [java.sql Types]))
 
