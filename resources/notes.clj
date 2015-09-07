@@ -72,6 +72,83 @@ select r.uid
 ;********************************
 
 
+select user_id, password, a.name as 'account_name'
+  from users u
+    join accounts a on u.account_id = a.id
+  where user_id = :user_id
+
+--:as roles
+select r.uid
+  from user_roles ur
+    inner join roles r on ur.role_id = r.role_id
+  where ur.user_id = :user_id
+
+
+
+;********************************
+
+
+(defm mymodel
+
+  ; schema
+  [[:responses [:id*int]
+               [:first-name*text {:rules [:required [:length 1 100]]
+                                  :error "First name is required."}]]
+   [:partners [:id*int]
+              [:name*text]]  ]
+
+   ; relationships
+   [["responses have partner" :responses.partner-id :partners.id]
+    ["responses have partner :: responses.partner_id partners_id"]
+    [:responses->partner :partner-id :id]
+
+    [:responses*have-a*partner :partner-id :id]
+
+    [:responses->partner :partner-id :id]      ]
+
+
+
+  (qry-> mydb
+         (select1 :responses {:id 1} [:id :name :partner]))
+
+  (qry-> [mydb mymodel]
+         (select :responses {:partner-id 1} [:id :name :partner-id :partner.name]))
+
+  "select r.id, r.first_name, p.id as '_p_id', p.name as '_p_name'
+      from responses r
+          inner join partners p on r.partner_id = p.id
+      where p.id = ?"
+
+
+
+  => {:id 101
+      :first-name "bob"
+      :partner {:id 102 :name "Suncoast"}}
+
+
+
+
+
+  [:id*int {:rules [[:range 21 130]]
+              :error "Age is optional but must be at least 21"}]
+
+  [:name#text {:rules [:required [:length 3 10]]
+               :error "Name is required and must be between 3 and 10 characters."}]
+
+  )
+
+; if we go down the path of having a model of the database to use for query generation?
+
+(qry-> mydb
+       (select1 :response {:id 101} :partner))
+
+
+; ********************************
+
+
+
+
+
 ; somehow handle dynamic ordering
 
 
