@@ -1,8 +1,8 @@
 
 
 ; ## Query Threading Operators
-pg/qry-> ; intended for non transactional statement sets
-pg/trx-> ; intended for transactional statement sets
+; pg/qry-> ; intended for non transactional statement sets
+; pg/trx-> ; intended for transactional statement sets
 
 
 
@@ -22,35 +22,95 @@ pg/trx-> ; intended for transactional statement sets
    :pooled   false })
 
 
-; insert a category
-(pg/tran-> examples-db
-           (pg/insert :categories {:name "category 1"}))
+; insert a single category
+(pg/trx-> examples-db
+          (pg/insert :categories {:name "category 1"}))
 
 => 1 ; returns generated category id
 
 
-; select the category we just inserted
+
+; Insert multiple records in a single transaction, as independant statements
+(pg/trx-> examples-db
+          (pg/insert :categories {:name "category 2"})
+          (pg/insert :categories {:name "category 3"}))
+
+=> [2 3] ; returns generated id's as sequence
+
+
+; Insert multiple rows at once, as a single statement in map format.
+(pg/trx-> examples-db
+          (pg/insert :categories [{:name "category 4"}
+                                  {:name "category 5"}]))
+=> (4 5)
+
+; TODO - Insert multiple rows at once, as a single statement in vector format.
+#_(pg/trx-> examples-db
+          (pg/insert :categories [[:name]
+                                  ["category 6"]
+                                  ["category 7"]]))
+
+
+
+; select all categories
 (pg/qry-> examples-db
-          (pg/select1 :categories {:id 1}))
+          (pg/select :categories {}))
 
-=> {:id 1, :name "category 1"}
-
-
-
-; insert 2 products into category 1
-(pg/tran-> examples-db
-           (pg/insert :products [{:category-id 1 :name "product 1"}
-                                 {:category-id 1 :name "product 2"}]))
-=> (1 2) ; returns the generated product id's
+=> ({:id 1 :name "category 1"}
+    {:id 2 :name "category 2"}
+    {:id 3 :name "category 3"}
+    {:id 4 :name "category 4"}
+    {:id 5 :name "category 5"}) ; returns list of all matching results
 
 
 
-; select all products
+; select a single category
 (pg/qry-> examples-db
-          (pg/select :products {:category-id 1}))
+          (pg/select1 :categories {:id 2}))
 
-=> ({:id 1 :category-id 1 :name "product 1"}
-    {:id 2 :category-id 1 :name "product 2"})
+=> {:id 2 :name "category 2"} ; not it's not wrapped in sequence.
+
+
+
+; query with no results
+(pg/qry-> examples-db
+          (pg/select :products {}))
+
+=> nil
+
+
+
+
+
+
+; insert parent category and product children at once.
+(pg/trx-> examples-db
+          (pg/insert :categories {:name "Category 6"})
+          (pg/insert :products (pg/with-rs
+
+                                 ; a sequence of values for insertion
+                                 ["Product A" "Product B"]
+
+                                 ; this is the template to use for each item upon insert
+                                 ; rs   - implicitly available and is the resultset
+                                 ; item - implicitly available name for each value
+                                 {:category-id (first rs)
+                                  :name item}
+
+                                 )
+
+                      ))
+=> [6 (1 2)] ; returns the generated category id in first element,
+             ; and sequence of product id's in second.
+
+
+
+; select all products in our newly created category
+(pg/qry-> examples-db
+          (pg/select :products {:category-id 6}))
+
+=> ({:id 1 :category-id 6 :name "Product A"}
+    {:id 2 :category-id 6 :name "Product B"})
 
 
 
@@ -63,13 +123,21 @@ pg/trx-> ; intended for transactional statement sets
 
 
 
-; select a list products with category name
+; select products in category 6
+(pg/qry-> examples-db
+          (pg/select :products {:category-id 6}))
+
+=> ({:id 1, :category-id 6, :name "Product A"}
+    {:id 2, :category-id 6, :name "Product B"})
 
 
+; select a specific category and all associated products
+(pg/qry-> examples-db
+          (pg/select1 :categories {:id 6})
+          (pg/select :products {:category-id 6}))
 
-
-
-
+=> [{:id 6, :name "Category 6"}
+    ({:id 1, :category-id 6, :name "Product A"} {:id 2, :category-id 6, :name "Product B"})]
 
 
 
@@ -142,6 +210,7 @@ pg/trx-> ; intended for transactional statement sets
 => ({:id 1, :name "product 1"}
     {:id 2, :name "product 2"}
     {:id 3, :name "product 3"})
+
 
 
 
