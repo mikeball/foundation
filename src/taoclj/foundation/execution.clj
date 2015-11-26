@@ -29,11 +29,14 @@
 (defn execute-prepared-query ; execute-prepared
   "Sets parameter values and executes a jdbc prepared statement."
   [cnx compiled-query]
+
   ; (println "*** (:sql parsed) " (:sql compiled-query))
+  ; (println "*** :param-values " (:param-values compiled-query))
 
   (let [statement (.prepareStatement cnx (:sql compiled-query))]
 
-    (writing/set-parameter-values statement (:param-values compiled-query))
+    (writing/set-parameter-values statement
+                                  (:param-values compiled-query))
 
     (if (.execute statement)
       ; .execute returns true there is a result set present, so read it

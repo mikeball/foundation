@@ -1,25 +1,33 @@
 # TODO/Questions
 
 
-- change placeholder character to $
-    https://github.com/krisajenkins/yesql/issues/79
+
+- handle single colon for array syntax in templated queries
+
+- json field update
 
 
+- add mechanism to handle exceptions
+  perhaps add ability to push exceptions onto core.async channel?
+    as described on cognicast 87 / ANTHONY MARCAR
 
-- polish sections for dynamic where clauses...
+
+- sections for dynamic where clauses...
     https://github.com/krisajenkins/yesql/issues/13
 
+
+- sort out return from inserts that don't have generated keys (user-roles)
+    need to see what jdbc driver returns
+    perhaps return nil? return both?
+
+
+- dynamic queries ... dynamic sections? honeysql/etc?
+  perhaps just a datastructure dsl just for where clause? orderby?
+  perhaps just use "sections" to generate string?
 
 
 - publish to clojars
 - confirm functionality on clean machine
-- locate some testers
-
-
-
-
-- solidify batch insert/update syntax
-    https://github.com/krisajenkins/yesql/issues/51
 
 
 - research reduce based system...
@@ -27,19 +35,31 @@
     https://gist.github.com/ghadishayban/d2f31961deba98ee4595
 
 
-- ability to easily include foreign key related records using dsl? Good idea or bad?
 
 
-- sort out return from inserts that don't have generated keys (user-roles)
 
 
-- dynamic queries ... dynamic sections? honeysql/etc?
-  perhaps just a datastructure dsl just for where clause? orderby?
 
 
-- deal with the new question mark operators...
+# Pending full jsonb driver support
+  * see https://github.com/impossibl/pgjdbc-ng/issues/163
+
+- handle jsonb inserts as full parameter * waiting on driver support for jsonb
+
+- handle new question mark operators...
   see: http://postgresql.nabble.com/Problems-with-question-marks-in-operators-JDBC-ECPG-td5849461.html
   Probably need to extract any question marks from a query, put a placeholder for it, then perform standard replacement, then replace question mark placeholders with the relevant JDBC escaped version of the question mark
+
+
+- perhaps check for keyword placeholders within json on parse?
+
+
+
+
+
+
+
+
 
 
 

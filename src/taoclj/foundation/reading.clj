@@ -24,7 +24,8 @@
 
 
           (= ctn "json")
-          (cheshire/parse-string (.getObject result-set index))
+          (cheshire/parse-string (.getObject result-set index)
+                                 (fn [k] (keyword k)))
 
 
           :default

@@ -48,7 +48,8 @@
 
       (cond (and (= current-char \:)
                  (not= prior-char \:)
-                 (not= next-char \:)) ; we are changing context
+                 (not= next-char \:)
+                 (re-matches #"[a-zA-Z0-9]" (str next-char))) ; we are changing context
 
             (concat (list buf)
                     (scan-param (rest raw)))
@@ -61,17 +62,11 @@
 
 
 
+; (scan-sql "select '{\"name\":\"bob\"}'::json as person;")
 ; (scan-sql "::int")
 ; (scan-sql "select '123'::int as num;")
 ; (scan-sql "id=:a and name=:b;")
 ; (scan-sql "select * from users where id=:id and name in(:names);")
-
-
-
-
-
-
-
 
 
 
