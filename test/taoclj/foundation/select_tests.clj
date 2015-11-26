@@ -61,17 +61,9 @@
 
 
 
-; breakout to type conversion tests?
-(deftest handle-cast-to-integer
-  (is (= '({:num 123})
-          (qry-> tests-db
-                 (execute "select '123'::int as num;")))))
+;; (run-tests *ns*)
 
 
-(deftest handle-cast-to-text
-  (is (= '({:txt "abc"})
-          (qry-> tests-db
-                 (execute "select 'abc'::text as txt;")))))
 
 
 

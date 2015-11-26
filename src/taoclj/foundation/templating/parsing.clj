@@ -26,7 +26,7 @@
   (loop [raw input buf ""]
     (if-let [current-char (first raw)]
         (cond (not (param-character? current-char)) ; we are changing context
-              (concat [(keyword buf)]
+              (concat (list (keyword buf))
                       (scan-sql raw))
               :else
               (recur (rest raw)
@@ -39,18 +39,30 @@
 
   ; could we memoize/cache this here? right level?
 
-  (loop [raw (seq input) buf ""]
-    (if-let [current-char (first raw)]
-      (cond (= current-char \:) ; we are changing context
-            (concat [buf]
+  (loop [raw (seq input) buf "" prior-char nil]
+
+    (let [current-char (first raw)
+          next-char (second raw)]
+
+    (if current-char
+
+      (cond (and (= current-char \:)
+                 (not= prior-char \:)
+                 (not= next-char \:)) ; we are changing context
+
+            (concat (list buf)
                     (scan-param (rest raw)))
             :else
             (recur (rest raw)
-                   (str buf current-char)))
+                   (str buf current-char)
+                   current-char))
 
-      [buf] )))
+      [buf] ))))
 
 
+
+; (scan-sql "::int")
+; (scan-sql "select '123'::int as num;")
 ; (scan-sql "id=:a and name=:b;")
 ; (scan-sql "select * from users where id=:id and name in(:names);")
 
