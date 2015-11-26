@@ -26,7 +26,6 @@
 
 
 
-
 (deftest select-records
 
   (with-open [cnx (.getConnection tests-db)]
@@ -58,4 +57,22 @@
                 (select1 :select-arrays {:id 1}))))
 
   )
+
+
+
+
+; breakout to type conversion tests?
+(deftest handle-cast-to-integer
+  (is (= '({:num 123})
+          (qry-> tests-db
+                 (execute "select '123'::int as num;")))))
+
+
+(deftest handle-cast-to-text
+  (is (= '({:txt "abc"})
+          (qry-> tests-db
+                 (execute "select 'abc'::text as txt;")))))
+
+
+
 
