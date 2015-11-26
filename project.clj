@@ -9,6 +9,7 @@
   :dependencies [[org.clojure/clojure "1.8.0-RC2"]
                  [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.6"]
                  [com.zaxxer/HikariCP "2.4.2"]
+                 [cheshire "5.5.0"]
 
 
                  ; for some reason this was required to remove

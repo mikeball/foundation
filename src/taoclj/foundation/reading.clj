@@ -1,28 +1,36 @@
 (ns taoclj.foundation.reading
-  (:require [taoclj.foundation.naming :refer [from-db-name]])
+  (:require [taoclj.foundation.naming :refer [from-db-name]]
+            [cheshire.core :as cheshire])
   (:import [java.sql Types]))
-
 
 
 ; *** result set readers *********************
 
 
-(defn convert-from-db [column-type result-set index]
+(defn convert-from-db [rsmeta result-set index]
 
-  (cond (= column-type Types/TIMESTAMP)
-        (.toInstant (.getTimestamp result-set index))
+  ; (println "** colume type " column-type)
+  ; (println "** column class name " (.getColumnTypeName rsmeta index))
 
-        (= column-type Types/ARRAY)
-        (let [pg-array (.getArray result-set index)]
-          (vec (.getArray pg-array)))
+  (let [ct  (.getColumnType rsmeta index)
+        ctn (.getColumnTypeName rsmeta index)]
+
+    (cond (= ct Types/TIMESTAMP)
+          (.toInstant (.getTimestamp result-set index))
+
+          (= ct Types/ARRAY)
+          (let [pg-array (.getArray result-set index)]
+            (vec (.getArray pg-array)))
 
 
-        :default
-        (.getObject result-set index))
+          (= ctn "json")
+          (cheshire/parse-string (.getObject result-set index))
+
+
+          :default
+          (.getObject result-set index)))
 
   )
-
-
 
 
 (defn read-resultset
@@ -39,9 +47,7 @@
                       (throw (Exception. "ResultSet must have unique column names")))
 
           get-row-vals (fn [] (map (fn [^Integer i]
-                                     ; map types back from DB!
-                                     (let [ct (.getColumnType rsmeta i)]
-                                       (convert-from-db ct rs i) ))
+                                     (convert-from-db rsmeta rs i))
                                    idxs))
 
           read-rows (fn readrow []
