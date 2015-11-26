@@ -293,26 +293,25 @@
 
 
 
-;; (deftest insert-parent-child-with-rs-multiple-records
+(deftest insert-parent-child-with-rs-multiple-records
 
-;;   (with-open [cnx (.getConnection tests-db)]
-;;     (execute cnx "DROP TABLE IF EXISTS parent_records; DROP TABLE IF EXISTS child_records;")
-;;     (execute cnx "CREATE TABLE parent_records (id serial primary key not null, name text);")
-;;     (execute cnx "CREATE TABLE child_records (parent_id int not null, related_id int not null);"))
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS parent_records; DROP TABLE IF EXISTS child_records;")
+    (execute cnx "CREATE TABLE parent_records (id serial primary key not null, name text);")
+    (execute cnx "CREATE TABLE child_records (parent_id int not null, related_id int not null);"))
 
-;;   (trx-> tests-db
-;;          (insert :parent-records {:name "bob"})
-;;          (insert :child-records (with-rs [22 33] {:parent-id (first rs)
-;;                                                   :related-id item})))
+  (trx-> tests-db
+         (insert :parent-records {:name "bob"})
+         (insert :child-records (with-rs [22 33] {:parent-id (first rs)
+                                                  :related-id item})))
 
-;;   (is (= [ [{:id 1 :name "bob"}] [{:parent-id 1 :related-id 22}] ]
-;;          (qry-> tests-db
-;;                 (execute "SELECT id, name FROM parent_records;")
-;;                 (execute "SELECT parent_id, related_id FROM child_records;"))))
+  (is (= [ [{:id 1 :name "bob"}] [{:parent-id 1 :related-id 22}
+                                  {:parent-id 1 :related-id 33}] ]
+         (qry-> tests-db
+                (execute "SELECT id, name FROM parent_records;")
+                (execute "SELECT parent_id, related_id FROM child_records;"))))
 
-;;   )
-
-
+  )
 
 
 
@@ -381,9 +380,6 @@
 
 ; (run-tests *ns*)
 
-
-
-
 ; (run-tests 'taoclj.foundation-test)
 
 
@@ -391,15 +387,6 @@
 ;;        (insert :users      {:name "Bob"  :username "bob"  :password "abc123"})
 ;;        (insert :user-roles (with-rs 1 {:user-id (first rs)
 ;;                                        :role-id item})))
-
-
-
-
-
-
-
-
-
 
 
 ;; (qry-> tests-db
