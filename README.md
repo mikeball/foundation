@@ -7,16 +7,18 @@ Status: Work in Progress, slightly usable.
 
 ## Rationale
 
-I simply wanted something as easy to use as Entity Framework for postgres, minus the
-ORM baggage. I wanted DateTime's mapped automatically, and underscores converted to dashes. Also I REALLY wanted a clean sytax structure for exectuting multiple queries at once, and getting a sensible result back based on outcome of query. None of the other clojure sql access libaries was quite what I desired.
+I simply wanted something as easy to use as Entity Framework for postgres, minus the ORM baggage. I wanted DateTime's handled automatically, and underscores converted to dashes. Also I really wanted a clean sytax structure for exectuting multiple queries at once, and getting a sensible result back based on outcome of query. None of the other clojure sql access libaries was quite what I desired.
 
-Why only postgresql? Simply I've chosen to build first class support for 1 database rather than lowest common denominator support for many databases. Also a strong desire to out of the box map more complex types such as arrays & json, it really isn't possible to do that for all databases consistently.
+We also believe that insert, updates and very simple select statements are better handled using a datastructure DSL. This allow transparent handling of both single paramter items as well as sequences of items, cuts down on number of templated queries to write and not have to rely on function naming conventions. For any select query beyond the trivial, use a templated query.
+
+
+Why support only postgresql? Simply I've chosen to build first class support for 1 database rather than lowest common denominator support for all. A desire to out of the box map more complex types such as arrays & json, and also to support listen/notify.
 
 
 
 
 ## Goals
-  Ease of use while encouraging correctness.
+  Ease of use while encouraging correct path.
   Embrace postgres to fullest extent possible.
   Support postgresql extended datatypes (eg arrays, json, hstore, gis)
 
