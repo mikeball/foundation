@@ -1,5 +1,5 @@
 select id, name
-  from templated_select_records
+  from templated_query_selects
   where id in (:ids)
 
 
