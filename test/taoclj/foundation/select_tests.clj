@@ -5,7 +5,6 @@
             [taoclj.foundation.execution :refer [execute]]))
 
 
-
 (deftest select1-record
 
   (with-open [cnx (.getConnection tests-db)]
@@ -60,8 +59,23 @@
 
 
 
+(deftest select-arrays-2dimensions
 
-;; (run-tests *ns*)
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS select_arrays_2dimensions;")
+    (execute cnx "CREATE TABLE select_arrays_2dimensions (id serial primary key not null, letters text[][]);")
+    (execute cnx (str "INSERT INTO select_arrays_2dimensions (letters) VALUES "
+                      "('{{\"a\", \"b\", \"c\"}, {\"x\", \"y\", \"z\"}}');")))
+
+  (def-query select-arrays-2dimensions-query
+    {:file "taoclj/foundation/sql/select_arrays_2dimensions.sql"})
+
+  (is (= '({:id 1 :letters (("b" "c") ("y" "z"))})
+         (qry-> tests-db
+                (select-arrays-2dimensions-query {}))))
+
+  )
+
 
 
 

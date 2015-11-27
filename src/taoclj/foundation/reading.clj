@@ -7,31 +7,55 @@
 ; *** result set readers *********************
 
 
-(defn convert-from-db [rsmeta result-set index]
 
-  ; (println "** colume type " column-type)
-  ; (println "** column class name " (.getColumnTypeName rsmeta index))
+; array conversions
+(def type-int-array (Class/forName "[I"))
+(def type-string-array (Class/forName "[Ljava.lang.String;"))
+
+
+; left off need to add support for all array types
+; also get type only once, use let block
+(defn is-array? [item]
+  (or (= type-string-array (type item))))
+
+
+(defn convert-array [array]
+  (let [top-level-list (seq (.getArray array))]
+    ; (println "** top-level type: " (type top-level-list))
+
+    ; top-level-list
+    (map (fn [item]
+           (if (is-array? item)
+             (seq item) ; convert sub-arrays
+             item))
+         top-level-list)
+
+    ))
+
+
+(defn convert-from-db [rsmeta result-set index]
 
   (let [ct  (.getColumnType rsmeta index)
         ctn (.getColumnTypeName rsmeta index)]
+
+    ; (println "** colume type " ct)
 
     (cond (= ct Types/TIMESTAMP)
           (.toInstant (.getTimestamp result-set index))
 
           (= ct Types/ARRAY)
-          (let [pg-array (.getArray result-set index)]
-            (vec (.getArray pg-array)))
-
+          (convert-array (.getArray result-set index))
 
           (= ctn "json")
           (cheshire/parse-string (.getObject result-set index)
                                  (fn [k] (keyword k)))
 
-
           :default
           (.getObject result-set index)))
 
   )
+
+
 
 
 (defn read-resultset

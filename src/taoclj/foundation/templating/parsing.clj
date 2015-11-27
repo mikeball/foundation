@@ -49,7 +49,7 @@
       (cond (and (= current-char \:)
                  (not= prior-char \:)
                  (not= next-char \:)
-                 (re-matches #"[a-zA-Z0-9]" (str next-char))) ; we are changing context
+                 (re-matches #"[a-zA-Z]" (str next-char))) ; we are changing context
 
             (concat (list buf)
                     (scan-param (rest raw)))
