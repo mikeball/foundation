@@ -1,4 +1,5 @@
 (ns taoclj.foundation.writing
+  (:require [cheshire.core :as cheshire])
   (:import [java.sql Statement Timestamp]))
 
 
@@ -22,25 +23,32 @@
 
   ))
 
-
+; should Statement instead be PreparedStatement??
 (defn- set-parameter-value! [^Statement statement ^Long position value]
   ; (println "parameter cls = " (class value))
+  ; (println "parameter value = " value)
   (if value
     (let [cls (class value)]
+
       (cond (= cls java.lang.String)  (.setString statement position value)
             (= cls java.lang.Integer) (.setInt statement position value)
             (= cls java.lang.Long)    (.setLong statement position value)
             (= cls java.time.Instant) (.setTimestamp statement position (Timestamp/from value))
             (= cls java.util.UUID)    (.setObject statement position value)
 
-            (sequential? value) ; if this is a vector/list, convert to a sql array
+            ; convert maps to json
+            (= cls clojure.lang.PersistentArrayMap)
+            (.setObject statement
+                        position
+                        (cheshire/generate-string value))
+
+            ; if this is a vector/list, convert to a sql array
+            (sequential? value)
             (.setArray statement position (to-sql-array statement value))
 
             :default
             (throw (Exception. "Parameter type not mapped!"))))))
 
-
-; (class (java.sql.Timestamp/from (Instant/now)))
 
 
 
