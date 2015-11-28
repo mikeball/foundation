@@ -25,6 +25,7 @@
 
 
 (defn compile-query [scanned-query params]
+
   (let [param-names (filter keyword? scanned-query)
         param-info  (reduce (fn [info key]
                               (let [val (params key)]
@@ -41,9 +42,44 @@
 
 
 
-; (compile-query ["select * from users where id=" :id " and name in(" :names ")"]
-;                {:id 1 :names ["bob" "joe" "bill"]}
-;  )
+
+;; ; a dynamic section function is defined.
+;; (def-query myquery
+;;   {:file "taoclj/foundation/sql/myquery.sql"
+;;    :sections {"myorder" (fn [params] "order by :name desc")}})
+
+
+;; ; raw query in the file looks like this
+;; "select * from customers where id=:id ${myorder}"
+
+;; ; pre-call time scan generates this
+;; ["select * from customers where id=" :id :section/myorder]
+
+
+;; ; call time calls section function with parameters and returns string
+;; ;   * throws exeption if section not found
+;; :section/myorder => "order by :name desc"
+
+;; ; the string is then scanned into standard structure
+;; ["order by " :name " desc"]
+
+
+;; ; the dynamic scanned structure is spliced into main query structure
+;; ["select * from customers where id=" :id "order by " :name " desc"]
+
+
+;; ; from there we can compile as normal
+
+
+
+;; (compile-query ["select * from customers order by " :section/myorder]
+;;                {:id 1}
+;; )
+
+
+;; (compile-query ["select * from users where id=" :id " and name in(" :names ")"]
+;;                 {:id 1 :names ["bob" "joe" "bill"]}
+;; )
 
 
 ; {:sql "select * from users where id=? and name in(?,?,?)"

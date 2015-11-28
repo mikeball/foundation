@@ -17,9 +17,14 @@
 
 (defn load-template [options]
   (let [raw (load-template-file (:file options))
-        raw-queries [raw] ]
+        raw-queries [raw] ; eventually support multiple queries per file.
+        ]
     (map scan-sql raw-queries)))
 
+
+
+(scan-sql "select * from users where id = :id order by {{something}}"
+)
 
 
 ;(load-template {:file "taoclj/sql/test-def-select1.sql"}
