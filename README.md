@@ -93,11 +93,11 @@ select p.id, p.name, c.name as category_name
 
 I simply wanted something as easy to use as Entity Framework for postgres, minus the ORM baggage. I wanted DateTime's handled automatically, and underscores converted to dashes. Also I really wanted a clean sytax structure for exectuting multiple queries at once, such as adding a parent and multiple child records. I wanted sensible result back based on outcome of query. None of the other clojure sql access libaries was quite what I desired.
 
-After much experimentation, I concluded that insert, updates and very simple select statements are better handled using a datastructure DSL. This allow transparent handling of both single items as well as sequences of items, cuts down on number of templated queries we need to write and means we don't have to rely on function naming conventions for additional information. For any select query beyond the most trivial, I feel it's better to then use a templated query.
+After much experimentation, I concluded that insert, updates and very simple select statements are better handled using a datastructure DSL. This allow transparent handling of both single items as well as sequences of items, batch inserts, cuts down on number of templated queries we need to write and means we don't have to rely on function naming conventions for return values. For any query beyond the most trivial, I feel it's better to then use a templated query.
 
-The primary main goal is ease of use while also encouraging a correct path. I want to embrace postgres to fullest extent possible, and support postgresql extended datatypes (eg arrays, json, hstore, gis)
+The primary goal is ease of use while also encouraging a correct path. I want to embrace postgres to fullest extent possible, and support postgresql extended datatypes (eg arrays, json, hstore, gis)
 
-Why support only postgresql? Simply I've chosen to build first class support for 1 database rather than lowest common denominator support for all with my limited time. Also a desire to out of the box map more complex types such as arrays & json, and also to support listen/notify.
+Why support only postgresql? Simply I've chosen to build first class support for 1 database rather than lowest common denominator support for all given limited time. Also a desire to out of the box map more complex types such as arrays & json, and also to support listen/notify.
 
 
 
