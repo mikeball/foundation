@@ -1,14 +1,16 @@
 # Foundation/PG
 
-A toolkit for talking to Postgres. Status - a work in progress, but usable.
+A complete toolkit for talking to Postgres. A work in progress, but usable.
 
- - Automatic conversion from dash to underscore and back
- - Casing is ignored, rather than automatically converted to lower case.
- - automatic conversion from/to java.time.Instant
- - Integer and text arrays supported.
- - Supports reading multiple result sets
- - Connection Pooling built in (HikariCP)
- - Support for JSON (partial/pending)
+- Simple to run query sets and transaction sets.
+- SQL templating similar to yesql
+- Automatic conversion of datetime datatypes
+- Integer and text array support
+- JSON support (partial/pending)
+- Multiple result set support
+- Automatic conversion from dash to underscore and back
+- Keyword case unchanged, rather than automatically converted to lower case.
+- Connection pooling with the excellent [HikariCP](http://brettwooldridge.github.io/HikariCP/)
 
 
 
@@ -82,14 +84,14 @@ select p.id, p.name, c.name as category_name
 - [Templated Queries - for more complex queries](docs/templated-queries.md)
 - [Raw Queries - using raw unsecure sql statements](docs/raw-queries.md)
 - [Using JSON - how to use JSON datatypes](docs/json-support.md)
-
+- [Listen/Notify - push notifications from postgres](docs/listen-notify.md)
 
 
 
 
 ## Rationale
 
-I simply wanted something as easy to use as Entity Framework for postgres, minus the ORM baggage. I wanted DateTime's handled automatically, and underscores converted to dashes. Also I really wanted a clean sytax structure for exectuting multiple queries at once, and getting a sensible result back based on outcome of query. None of the other clojure sql access libaries was quite what I desired.
+I simply wanted something as easy to use as Entity Framework for postgres, minus the ORM baggage. I wanted DateTime's handled automatically, and underscores converted to dashes. Also I really wanted a clean sytax structure for exectuting multiple queries at once, such as adding a parent and multiple child records. I wanted sensible result back based on outcome of query. None of the other clojure sql access libaries was quite what I desired.
 
 After much experimentation, I concluded that insert, updates and very simple select statements are better handled using a datastructure DSL. This allow transparent handling of both single items as well as sequences of items, cuts down on number of templated queries we need to write and means we don't have to rely on function naming conventions for additional information. For any select query beyond the most trivial, I feel it's better to then use a templated query.
 
