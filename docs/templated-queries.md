@@ -2,18 +2,17 @@
 
 First write your query in a sql file and place it on your classpath. It may be any type of sql query select/insert/update/delete.
 
-```sql
--- file: /path/to/my_query.sql
 
+## Create a template such as /path/to/my_query.sql
+```sql
 select p.id, p.name, c.name as category_name
   from products p
     inner join categories c on p.category_id = c.id
   where p.category_id = :category-id
 ```
 
+## Define the query and reference the template file.
 ```clojure
-
-; define the query and reference the template file.
 (def-query my-query
     {:file "path/to/my_query.sql"})
 
@@ -24,11 +23,10 @@ select p.id, p.name, c.name as category_name
 => ({:id 1 :name "Product A" :category-name "Category 6"}
     {:id 2 :name "Product B" :category-name "Category 6"})
 
+```
 
-
-
-
-; You can also specify a result-set transformation function
+## You can also specify a result-set transformation function
+```clojure
 (def-query my-query2
     {:file "path/to/my_query.sql"
      :transform (fn [rows]
@@ -41,16 +39,37 @@ select p.id, p.name, c.name as category_name
 
 => ("Product A - Category 6"
     "Product B - Category 6")
+```
 
 
 
 
+## You can also specify dynamic sections
+Create the file /path/to/my_query_with_sections.sql
 
+```sql
+select id, name from products :section/my-where
+```
+Now define a query to use the file, and specify a section function
+```clojure
+(def-query my-query3
+    {:file "path/to/my_query_with_sections.sql"
+     :section/my-where (fn [params]
+                         (if (:name params) "where name=:name")) })
+
+; now use the query with row transformation
+(pg/qry-> examples-db
+          (my-query3 {:name "Product A"}))
+
+=> ({:id 1 :name "Product A"})
+```
+
+
+
+
+```clojure
 ; There is also a select a single result with sql template file (may be removed)
 def-select1
-
-
-
 
 ```
 
