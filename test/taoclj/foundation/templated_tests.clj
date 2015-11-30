@@ -90,3 +90,27 @@
                 (templated-transform {}))))
 
   )
+
+
+
+(deftest templated-sections-are-handled
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS templated_sections;")
+    (execute cnx "CREATE TABLE templated_sections (id serial primary key not null, name text);")
+    (execute cnx "INSERT INTO templated_sections (name) VALUES ('bob'),('bill');"))
+
+  (def-query templated-sections-query
+    {:file "taoclj/foundation/sql/templated_sections.sql"
+     :section/filters (fn [params]
+                        (if (:name params) "name=:name"))})
+
+  (is (= '({:id 1 :name "bob"})
+          (qry-> tests-db
+                 (templated-sections-query {:name "bob"}))))
+
+  )
+
+
+
+

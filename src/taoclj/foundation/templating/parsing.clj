@@ -11,11 +11,12 @@
       (let [n (int c)]
           (or (and (>= n 48) (<= n 57))
               (and (>= n 65) (<= n 122))
-              ; numbers
+              ; numbers ?
+              (= n 47) ; forward slash
 
               ))))
 
-; (param-character? \a)
+; (param-character? \/)
 
 
 
@@ -36,16 +37,13 @@
 
 
 (defn scan-sql [input]
-
   ; could we memoize/cache this here? right level?
-
   (loop [raw (seq input) buf "" prior-char nil]
 
     (let [current-char (first raw)
           next-char (second raw)]
 
     (if current-char
-
       (cond (and (= current-char \:)
                  (not= prior-char \:)
                  (not= next-char \:)
@@ -61,6 +59,9 @@
       [buf] ))))
 
 
+
+;; (scan-sql "select * from customers where id=:id :section/myorder"
+;; )
 
 ; (scan-sql "select '{\"name\":\"bob\"}'::json as person;")
 ; (scan-sql "::int")
