@@ -57,7 +57,7 @@ Now define a query to use the file, and specify a section function
      :section/my-where (fn [params]
                          (if (:name params) "where name=:name")) })
 
-; now use the query with row transformation
+; now use the query with sections
 (pg/qry-> examples-db
           (my-query3 {:name "Product A"}))
 
@@ -66,6 +66,7 @@ Now define a query to use the file, and specify a section function
 
 
 
+## Other
 
 ```clojure
 ; There is also a select a single result with sql template file (may be removed)
