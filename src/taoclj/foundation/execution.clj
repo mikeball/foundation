@@ -18,26 +18,18 @@
              (do (.close statement) true) ; return some metadata??
              (reading/read-resultsets statement nil))))))
 
-
 ;(with-open [cnx (.getConnection taoclj.foundation.tests-config/tests-db)]
 ;  (execute [] cnx "select * from insert_single_record;" ) )
 
 
 
-
-
-(defn execute-prepared-query ; execute-prepared
+(defn execute-prepared-query
   "Sets parameter values and executes a jdbc prepared statement."
   [cnx compiled-query]
 
-  ; (println "*** (:sql parsed) " (:sql compiled-query))
-  ; (println "*** :param-values " (:param-values compiled-query))
-
   (let [statement (.prepareStatement cnx (:sql compiled-query))]
-
     (writing/set-parameter-values statement
                                   (:param-values compiled-query))
-
     (if (.execute statement)
       ; .execute returns true there is a result set present, so read it
       (reading/read-resultset (.getResultSet statement) nil)
@@ -45,9 +37,7 @@
       ; .execute returns false if the first result is an update count
       (let [rowcount (.getUpdateCount statement)]
         (.close statement)
-        {:row-count rowcount})
-
-      )))
+        {:row-count rowcount}) )))
 
 
 (defn execute-select [rs cnx table-name columns where-equals single?]
@@ -75,14 +65,6 @@
 
       (.close statement)
       generated-id ) ))
-
-
-
-
-
-
-
-
 
 
 

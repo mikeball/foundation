@@ -4,6 +4,7 @@ A complete toolkit for talking to Postgres. A work in progress, but usable.
 
 - Simple to run query sets and transaction sets.
 - SQL templating similar to yesql
+- Parameters are passed as PreparedStatement parameters.
 - Automatic conversion of datetime datatypes
 - Integer and text array support
 - JSON support (partial/pending)

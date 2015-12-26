@@ -23,8 +23,8 @@
 
 
 
-(scan-sql "select * from users where id = :id order by {{something}}"
-)
+;; (scan-sql "select * from users where id = :id order by {{something}}"
+;; )
 
 
 ;(load-template {:file "taoclj/sql/test-def-select1.sql"}

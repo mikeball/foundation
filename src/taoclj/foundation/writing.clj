@@ -4,9 +4,9 @@
 
 
 (defn to-sql-array [statement value]
-
   (let [java-array (into-array value)
         value-type (class (first value))
+
         array-type (cond (= value-type java.lang.String)
                          "text"
 
@@ -18,15 +18,11 @@
                          (throw (Exception. "Array type not supported!")))
 
         connection (.getConnection statement)]
+      (.createArrayOf connection array-type java-array)))
 
-      (.createArrayOf connection array-type java-array)
-
-  ))
 
 ; should Statement instead be PreparedStatement??
 (defn- set-parameter-value! [^Statement statement ^Long position value]
-  ; (println "parameter cls = " (class value))
-  ; (println "parameter value = " value)
   (if value
     (let [cls (class value)]
 

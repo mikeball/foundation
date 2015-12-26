@@ -1,8 +1,6 @@
 (ns taoclj.foundation.templating.parsing)
 
 
-
-
 (defn param-character?
   "Checks if a character is allowed in a param."
   [c]
@@ -32,8 +30,7 @@
               :else
               (recur (rest raw)
                      (str buf current-char)))
-        [(keyword buf)]
-  )))
+        [(keyword buf)])))
 
 
 (defn scan-sql [input]

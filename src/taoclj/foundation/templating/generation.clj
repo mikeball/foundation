@@ -3,26 +3,21 @@
             [taoclj.foundation.templating.parsing :as parsing]))
 
 
-
-
-(defn to-placeholder-query [scanned-query params-info]
+(defn to-placeholder-query
+  [scanned-query params-info]
   (apply str
          (map (fn [tok]
                 (if-not (keyword? tok) tok
                   (let [n (tok params-info)]
                     (if-not n "?"
                       (join "," (repeat n "?"))))))
-              scanned-query)
-         ))
-
+              scanned-query)))
 
 ; (to-placeholder-query ["select * from users where id=" :id]
 ;                       {:id 3} )
 
 
-
 (def list-param? (some-fn list? vector? seq?))
-
 
 (defn is-section-name? [candidate]
   (and (keyword? candidate)
@@ -42,7 +37,6 @@
                    (parsing/scan-sql)))))
        (flatten)))
 
-
 ;; (prepare-query
 ;;  ["select * from customers where id=" :id " " :section/filters]
 ;;  {:id 1}
@@ -61,8 +55,7 @@
                             (keys params))]
 
     {:sql (to-placeholder-query prepared-query param-info) ; memoize eventually
-     :param-values (flatten (map params param-names))}
-  ))
+     :param-values (flatten (map params param-names))}))
 
 
 ;; (compile-query ["select * from customers where id=" :id " " :section/filters]

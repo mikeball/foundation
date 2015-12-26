@@ -3,7 +3,6 @@
            [com.impossibl.postgres.jdbc PGDataSource]))
 
 
-
 (defn create-datasource [config]
   (doto (PGDataSource.)
         (.setHost     (:host config))
@@ -11,7 +10,6 @@
         (.setDatabase (:database config))
         (.setUser     (:username config))
         (.setPassword (:password config))))
-
 
 ;; (create-datasource {:host "localhost"
 ;;    :port 5432
@@ -39,7 +37,4 @@
         ;(.addDataSourceProperty "useServerPrepStmts", "true");
 
     ))
-
-
-
 

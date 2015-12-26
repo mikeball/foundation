@@ -21,24 +21,17 @@
 
 (defn convert-array [array]
   (let [top-level-list (seq (.getArray array))]
-    ; (println "** top-level type: " (type top-level-list))
-
     ; top-level-list
     (map (fn [item]
            (if (is-array? item)
              (seq item) ; convert sub-arrays
              item))
-         top-level-list)
-
-    ))
+         top-level-list) ))
 
 
 (defn convert-from-db [rsmeta result-set index]
-
   (let [ct  (.getColumnType rsmeta index)
         ctn (.getColumnTypeName rsmeta index)]
-
-    ; (println "** colume type " ct)
 
     (cond (= ct Types/TIMESTAMP)
           (.toInstant (.getTimestamp result-set index))
@@ -51,11 +44,7 @@
                                  (fn [k] (keyword k)))
 
           :default
-          (.getObject result-set index)))
-
-  )
-
-
+          (.getObject result-set index))))
 
 
 (defn read-resultset
@@ -71,10 +60,12 @@
           dups    (or (apply distinct? columns)
                       (throw (Exception. "ResultSet must have unique column names")))
 
+          ; break out function for perf
           get-row-vals (fn [] (map (fn [^Integer i]
                                      (convert-from-db rsmeta rs i))
                                    idxs))
 
+          ; break out function for perf
           read-rows (fn readrow []
                         (when (.next rs)
                           (if (= result-format :rows)

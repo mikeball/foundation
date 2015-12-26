@@ -3,8 +3,6 @@
             [taoclj.foundation.naming :refer [to-quoted-db-name]]))
 
 
-
-
 (defn to-column-list [columns]
   (join "," (map (fn [col] (to-quoted-db-name col))
                  columns)))
@@ -32,7 +30,6 @@
   (if limit (str " LIMIT " limit)))
 
 
-
 (defn to-update-set-list [columns]
   (str " SET "
        (join ","
@@ -41,23 +38,14 @@
 ; (to-set-list [:first :last])
 
 
-
-; to generate parameters list for IN clause
-; (s/join ", " (repeat (count params) "?")
-
-
 (defn to-sql-select [table-name columns where-columns limit]
   (str "SELECT "
        (if columns (to-column-list columns) "*")
        " FROM "
        (to-quoted-db-name table-name)
        (to-where where-columns)
-       (to-limit-offset limit)
-       ))
-
+       (to-limit-offset limit)))
 ; (to-sql-select :users nil [:id] 1)
-
-
 ; (to-sql-select :insert-single-record nil nil nil)
 
 
@@ -82,16 +70,5 @@
        (to-update-set-list columns)
        (to-where where-columns)))
  ; (to-sql-update :users [:first-name :last-name] [:id])
-
-
-
-
-
-
-
-
-
-
-
 
 

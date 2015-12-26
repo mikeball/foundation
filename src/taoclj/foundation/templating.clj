@@ -22,6 +22,7 @@
         sections     (gensym "sections")
         transform    (gensym "transform")
         result       (gensym "result")]
+
     `(def ~name
        (let [~queries (~load-template ~options)
              ~sections (~extract-section-handlers ~options)
@@ -37,8 +38,7 @@
                      (if (nil? ~result) ~result
                        (~transform ~result))
 
-                     ) )))
-         ))))
+                     ))))))))
 
 
 
@@ -74,10 +74,7 @@
                      (if (nil? ~results2) ~results2
                        (~transform ~results2))
 
-                     ) )))
-
-         ))))
-
+                     ))))))))
 ; (generate-def-select 'select-session {} true)
 
 
