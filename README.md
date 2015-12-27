@@ -21,7 +21,7 @@ A complete toolkit for talking to Postgres. A work in progress, but usable.
 
 Add this to your [Leiningen](https://github.com/technomancy/leiningen) `:dependencies`
 
-[![Clojars Project](http://clojars.org/org.taoclj.foundation/latest-version.svg)](http://clojars.org/org.taoclj/foundation)
+[![Clojars Project](http://clojars.org/org.taoclj/foundation/latest-version.svg)](http://clojars.org/org.taoclj/foundation)
 
 
 
