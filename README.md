@@ -16,14 +16,13 @@ A complete toolkit for talking to Postgres. A work in progress, but usable.
 - Connection pooling with the excellent [HikariCP](http://brettwooldridge.github.io/HikariCP/)
 
 
-[![Build Status](https://travis-ci.org/mikeball/foundation.png?branch=travis)](https://travis-ci.org/mikeball/foundation)
 
 ## Installation
 
 Add this to your [Leiningen](https://github.com/technomancy/leiningen) `:dependencies`
 
 [![Clojars Project](http://clojars.org/org.taoclj.foundation/latest-version.svg)](http://clojars.org/org.taoclj/foundation)
-
+[![Build Status](https://travis-ci.org/mikeball/foundation.png?branch=travis)](https://travis-ci.org/mikeball/foundation)
 
 
 ## Quick Start
