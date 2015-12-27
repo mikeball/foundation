@@ -1,4 +1,4 @@
-(defproject org.taoclj/foundation "0.1.0-SNAPSHOT"
+(defproject org.taoclj/foundation "0.1.0"
   :description "A clojure data access library for postgresql."
 
   :url "https://github.com/mikeball/foundation"
