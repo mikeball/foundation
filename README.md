@@ -2,9 +2,11 @@
 
 A complete toolkit for talking to Postgres. A work in progress, but usable.
 
+## Key Features & Goals
 - Simple to run query sets and transaction sets.
 - SQL templating similar to yesql
-- Parameters are passed as PreparedStatement parameters.
+- Parameters passed as PreparedStatement parameters
+- A way to add dynamic query sections
 - Automatic conversion of datetime datatypes
 - Integer and text array support
 - JSON support (partial/pending)
@@ -14,12 +16,26 @@ A complete toolkit for talking to Postgres. A work in progress, but usable.
 - Connection pooling with the excellent [HikariCP](http://brettwooldridge.github.io/HikariCP/)
 
 
+[![Build Status](https://travis-ci.org/mikeball/foundation.png?branch=travis)](https://travis-ci.org/mikeball/foundation)
+
+## Installation
+
+Add this to your [Leiningen](https://github.com/technomancy/leiningen) `:dependencies`
+
+[![Clojars Project](http://clojars.org/org.taoclj.foundation/latest-version.svg)](http://clojars.org/org.taoclj/foundation)
+
+
 
 ## Quick Start
 ```clojure
 
 (require '[taoclj.foundation :as pg])
 
+
+;; for the sql structure see /resources/examples.sql
+
+
+; define the datasource with your database details
 (pg/def-datasource examples-db {:host     "localhost"
                                 :port     5432
                                 :database "examples_db"
@@ -28,31 +44,61 @@ A complete toolkit for talking to Postgres. A work in progress, but usable.
                                 :pooled   false })
 
 
-; insert a record, returns generated key
+
+; insert a single record, returns the database generated key
 (pg/trx-> examples-db
-          (pg/insert :products {:name "product 1"}))
+          (pg/insert :categories {:name "Category A"}))
+
 => 1
 
 
-
-; select all products
+; select a single record, returns a map representing the row
 (pg/qry-> examples-db
-          (pg/select :products {}))
+          (pg/select1 :categories {:id 1}))
 
-=> ({:id 1, :name "product 1"})   ; * returns a list
+=> {:id 1, :name "Category A"}
 
 
-; select a single record
+; insert a multiple records, returns the generated keys as sequence
+(pg/trx-> examples-db
+          (pg/insert :categories [{:name "Category B"}
+                                  {:name "Category C"}]))
+=> (2 3)
+
+
+; select multiple records, returns a sequence
 (pg/qry-> examples-db
-          (pg/select1 :products {:id 1}))
+          (pg/select :categories {}))
 
-=> {:id 1, :name "product 1"}   ; * returns a single record
+=> ({:id 1, :name "Category A"}
+    {:id 2, :name "Category B"}
+    {:id 3, :name "Category C"})
 
+
+
+; insert a new category and 2 child products, returns generated keys
+(pg/trx-> examples-db
+          (pg/insert :categories {:name "Category D"})
+          (pg/insert :products (pg/with-rs
+
+                                 ; a sequence of values for insertion
+                                 ["Product D1" "Product D2"]
+
+                                 ; this is the template to use for each item upon insert
+                                 ; rs   - implicitly available and is the resultset
+                                 ; item - implicitly available name for each value
+                                 {:category-id (first rs)
+                                  :name item}
+
+                                 )))
+
+=> [4 (1 2)]
 
 ```
 
 ```sql
 -- write more complex queries in sql template files
+
 select p.id, p.name, c.name as category_name
   from products p
     inner join categories c on p.category_id = c.id
@@ -62,15 +108,17 @@ select p.id, p.name, c.name as category_name
 ```clojure
 
 ; define the query and reference the template file.
-(def-query my-query
-    {:file "path/to/my_query.sql"})
+(pg/def-query my-query
+    {:file "path_to/my_query.sql"})
 
-; use complex template queries
+; now use our template query
 (pg/qry-> examples-db
-          (my-query {:category-id 6}))
+          (my-query {:category-id 4}))
 
-=> ({:id 1 :name "Product A" :category-name "Category 6"}
-    {:id 2 :name "Product B" :category-name "Category 6"})
+
+=> ({:id 1, :name "Product D1", :category-name "Category D"}
+    {:id 2, :name "Product D2", :category-name "Category D"})
+
 
 ```
 
@@ -92,9 +140,9 @@ select p.id, p.name, c.name as category_name
 
 ## Rationale
 
-I simply wanted something as easy to use as Entity Framework for postgres, minus the ORM baggage. I wanted DateTime's handled automatically, and underscores converted to dashes. Also I really wanted a clean sytax structure for exectuting multiple queries at once, such as adding a parent and multiple child records. I wanted sensible result back based on outcome of query. None of the other clojure sql access libaries was quite what I desired.
+I simply wanted something as easy to get data into and out of postgres. I wanted DateTime's converted automatically, and underscores converted to dashes. Also I really wanted a clean sytax structure for exectuting multiple queries at once, such as adding a parent and multiple child records. I wanted sensible result back based on outcome of query. None of the other clojure sql access libaries was quite what I desired.
 
-After much experimentation, I concluded that insert, updates and very simple select statements are better handled using a datastructure DSL. This allow transparent handling of both single items as well as sequences of items, batch inserts, cuts down on number of templated queries we need to write and means we don't have to rely on function naming conventions for return values. For any query beyond the most trivial, I feel it's better to then use a templated query.
+After much experimentation, I concluded that insert, updates and very simple select statements are better handled using a lightweight DSL. This allow transparent handling of both single items as well as sequences of items, batch inserts, cuts down on number of templated queries we need to write and means we don't have to rely on function naming conventions for return values. For any query beyond the most trivial, it's a better solution to then use a templated query.
 
 The primary goal is ease of use while also encouraging a correct path. I want to embrace postgres to fullest extent possible, and support postgresql extended datatypes (eg arrays, json, hstore, gis)
 
