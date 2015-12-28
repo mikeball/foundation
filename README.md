@@ -130,13 +130,11 @@ select p.id, p.name, c.name as category_name
 - [Dynamic Queries - create dynamic sections](docs/dynamic-queries.md)
 - [Using JSON - how to use JSON datatypes](docs/json-support.md)
 
-Lightweight DSL
 - [Selects - DSL for simple select queries](docs/selecting-data.md)
 - [Inserts - DSL for inserting data](docs/inserting-data.md)
 - [Updates - DSL for updating data](docs/updating-data.md)
 - [Deletes - DSL for deleting data](docs/deleting-data.md)
 
-Other
 - [Raw Queries - using raw unsecure sql statements](docs/raw-queries.md)
 - [Listen/Notify - push notifications from postgres](docs/listen-notify.md)
 
