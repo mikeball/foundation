@@ -129,6 +129,7 @@ select p.id, p.name, c.name as category_name
 - [Selects - DSL for simple select queries](docs/selecting-data.md)
 - [Inserts - DSL for inserting data](docs/inserting-data.md)
 - [Updates - DSL for updating data](docs/updating-data.md)
+- [Deletes - DSL for deleting data](docs/deleting-data.md)
 - [Templated Queries - for more complex queries](docs/templated-queries.md)
 - [Raw Queries - using raw unsecure sql statements](docs/raw-queries.md)
 - [Using JSON - how to use JSON datatypes](docs/json-support.md)
