@@ -125,6 +125,7 @@ select p.id, p.name, c.name as category_name
 
 
 ## Docs and Howto
+
 - [Query Threading - running sets of queries](docs/query-threading.md)
 - [Templated Queries - for more complex queries](docs/templated-queries.md)
 - [Dynamic Queries - create dynamic sections](docs/dynamic-queries.md)
