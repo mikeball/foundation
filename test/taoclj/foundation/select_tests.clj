@@ -43,6 +43,20 @@
   )
 
 
+(deftest select-records-with-nulls
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS select_records_with_nulls;")
+    (execute cnx "CREATE TABLE select_records_with_nulls (id serial primary key not null,
+             i integer, t text, tsz timestamptz, b boolean);")
+    (execute cnx "INSERT INTO select_records_with_nulls (i,t,tsz,b) VALUES (null,null,null,null);"))
+
+  (is (= [{:id 1 :i nil :t nil :tsz nil :b nil}]
+         (qry-> tests-db
+                (select :select-records-with-nulls {})))))
+
+
+
+
 (deftest select-arrays
 
   (with-open [cnx (.getConnection tests-db)]

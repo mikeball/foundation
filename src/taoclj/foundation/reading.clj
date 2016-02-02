@@ -30,18 +30,20 @@
 
 
 (defn convert-from-db [rsmeta result-set index]
-  (let [ct  (.getColumnType rsmeta index)
-        ctn (.getColumnTypeName rsmeta index)]
+  (let [ct    (.getColumnType rsmeta index)
+        ctn   (.getColumnTypeName rsmeta index)]
 
     (cond (= ct Types/TIMESTAMP)
-          (.toInstant (.getTimestamp result-set index))
+          (if-let [ts (.getTimestamp result-set index)]
+            (.toInstant ts))
 
           (= ct Types/ARRAY)
-          (convert-array (.getArray result-set index))
+          (if-let [a (.getArray result-set index)]
+            (convert-array a))
 
           (= ctn "json")
-          (cheshire/parse-string (.getObject result-set index)
-                                 (fn [k] (keyword k)))
+          (if-let [json (.getObject result-set index)]
+            (cheshire/parse-string json (fn [k] (keyword k))))
 
           :default
           (.getObject result-set index))))
@@ -51,6 +53,7 @@
   ([^java.sql.ResultSet rs] (read-resultset rs nil))
   ([^java.sql.ResultSet rs result-format]
 
+   (println "now reading result set...")
     (let [rsmeta  (.getMetaData rs)
           idxs    (range 1 (inc (.getColumnCount rsmeta)))
 
@@ -67,10 +70,12 @@
 
           ; break out function for perf
           read-rows (fn readrow []
+                        (println "now reading row...")
                         (when (.next rs)
                           (if (= result-format :rows)
                             (cons (vec (get-row-vals)) (readrow))
                             (cons (zipmap columns (get-row-vals)) (readrow)))))]
+
 
       (if (= result-format :rows)
         (cons (vec columns) (read-rows))
