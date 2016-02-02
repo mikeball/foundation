@@ -9,14 +9,18 @@
         (.setPort     (:port config))
         (.setDatabase (:database config))
         (.setUser     (:username config))
-        (.setPassword (:password config))))
+        (.setPassword (:password config))
+        ; (.setSSL      (or (:ssl config) false))
+    ))
 
-;; (create-datasource {:host "localhost"
+;; (create-datasource
+;;   {:host "localhost"
 ;;    :port 5432
 ;;    :database "foundation_tests"
 ;;    :username "foundation_tests_user"
 ;;    :password "password"
 ;;    })
+
 
 
 (defn create-pooled-datasource [config]
@@ -28,6 +32,9 @@
         (.addDataSourceProperty "Database"  (:database config))
         (.addDataSourceProperty "User"      (:username config))
         (.addDataSourceProperty "Password"  (:password config))
+
+        ;; (.addDataSourceProperty "??"  (or (:secure-connection config) false))
+
 
         (.setConnectionTimeout 5000)
         (.setMaximumPoolSize 3)
