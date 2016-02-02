@@ -53,7 +53,6 @@
   ([^java.sql.ResultSet rs] (read-resultset rs nil))
   ([^java.sql.ResultSet rs result-format]
 
-   (println "now reading result set...")
     (let [rsmeta  (.getMetaData rs)
           idxs    (range 1 (inc (.getColumnCount rsmeta)))
 
@@ -70,7 +69,6 @@
 
           ; break out function for perf
           read-rows (fn readrow []
-                        (println "now reading row...")
                         (when (.next rs)
                           (if (= result-format :rows)
                             (cons (vec (get-row-vals)) (readrow))

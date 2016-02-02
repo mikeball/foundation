@@ -1,6 +1,6 @@
 (ns taoclj.foundation.writing
   (:require [cheshire.core :as cheshire])
-  (:import [java.sql Statement Timestamp]))
+  (:import [java.sql Statement PreparedStatement Timestamp]))
 
 
 (defn to-sql-array [statement value]
@@ -21,14 +21,15 @@
       (.createArrayOf connection array-type java-array)))
 
 
-; should Statement instead be PreparedStatement??
-(defn- set-parameter-value! [^Statement statement ^Long position value]
+
+(defn- set-parameter-value! [^PreparedStatement statement ^Long position value]
   (if value
     (let [cls (class value)]
 
       (cond (= cls java.lang.String)  (.setString statement position value)
             (= cls java.lang.Integer) (.setInt statement position value)
             (= cls java.lang.Long)    (.setLong statement position value)
+            ; (= cls java.lang.Boolean) (.setBoolean statement position value)
             (= cls java.time.Instant) (.setTimestamp statement position (Timestamp/from value))
             (= cls java.util.UUID)    (.setObject statement position value)
 
