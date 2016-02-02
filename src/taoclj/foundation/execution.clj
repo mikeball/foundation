@@ -30,6 +30,7 @@
   (let [statement (.prepareStatement cnx (:sql compiled-query))]
     (writing/set-parameter-values statement
                                   (:param-values compiled-query))
+
     (if (.execute statement)
       ; .execute returns true there is a result set present, so read it
       (reading/read-resultset (.getResultSet statement) nil)

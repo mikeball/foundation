@@ -31,6 +31,7 @@
          (fn [~rs ~cnx ~params]
            (let [~scanned      (first ~queries)
                  ~compiled     (generation/compile-query ~scanned ~params ~sections)]
+
              (conj ~rs
 
                    (let [~result (execution/execute-prepared-query ~cnx ~compiled) ]
