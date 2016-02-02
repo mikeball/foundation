@@ -29,7 +29,7 @@
       (cond (= cls java.lang.String)  (.setString statement position value)
             (= cls java.lang.Integer) (.setInt statement position value)
             (= cls java.lang.Long)    (.setLong statement position value)
-            ; (= cls java.lang.Boolean) (.setBoolean statement position value)
+            (= cls java.lang.Boolean) (.setBoolean statement position value)
             (= cls java.time.Instant) (.setTimestamp statement position (Timestamp/from value))
             (= cls java.util.UUID)    (.setObject statement position value)
 

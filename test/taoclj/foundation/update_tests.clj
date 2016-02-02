@@ -23,6 +23,30 @@
   )
 
 
+(deftest update-records-of-all-types
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS update_records_of_all_types;")
+    (execute cnx "CREATE TABLE update_records_of_all_types (id serial primary key not null,
+             i integer, b boolean, t text, tsz timestamptz);")
+
+    (execute cnx "INSERT INTO update_records_of_all_types (i,b,t,tsz)
+             values (null,null,null,null);"))
+
+  (let [now (java.time.Instant/now)]
+    (trx-> tests-db
+           (update :update-records-of-all-types
+                   {:i 101 :b true :t "abc" :tsz now}
+                   {:id 1}))
+
+    (is (= [{:id 1 :i 101 :b true :t "abc" :tsz now}]
+           (qry-> tests-db
+                  (execute "SELECT id,i,b,t,tsz FROM update_records_of_all_types where id=1;")))))
+  )
+
+
+
+
+
 (deftest update-records-arrays
 
   (with-open [cnx (.getConnection tests-db)]
