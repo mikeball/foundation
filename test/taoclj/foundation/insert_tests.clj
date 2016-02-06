@@ -5,7 +5,6 @@
             [taoclj.foundation.execution :refer [execute]]))
 
 
-
 (deftest insert-records
 
   (with-open [cnx (.getConnection tests-db)]
@@ -18,6 +17,23 @@
   (is (= [{:id 1 :name "bob"}]
          (qry-> tests-db
                 (execute "SELECT id, name FROM insert_records;"))  ))
+
+  )
+
+
+(deftest insert-nulls
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS insert_nulls;")
+    (execute cnx (str "CREATE TABLE insert_nulls (id serial primary key not null, "
+                      "  t text, i integer, b boolean, tz timestamptz);")))
+
+  (trx-> tests-db
+         (insert :insert-nulls {:t nil :i nil :b nil :tz nil}))
+
+  (is (= [{:id 1 :t nil :i nil :b nil :tz nil}]
+         (qry-> tests-db
+                (execute "SELECT * FROM insert_nulls;"))  ))
 
   )
 

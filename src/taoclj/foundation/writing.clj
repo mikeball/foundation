@@ -22,30 +22,51 @@
 
 
 
-(defn- set-parameter-value! [^PreparedStatement statement ^Long position value]
-  (if value
-    (let [cls (class value)]
 
-      (cond (= cls java.lang.String)  (.setString statement position value)
-            (= cls java.lang.Integer) (.setInt statement position value)
-            (= cls java.lang.Long)    (.setLong statement position value)
-            (= cls java.lang.Boolean) (.setBoolean statement position value)
-            (= cls java.time.Instant) (.setTimestamp statement position (Timestamp/from value))
-            (= cls java.util.UUID)    (.setObject statement position value)
+(defprotocol SqlParam
+  (set-param [v s i]))
 
-            ; convert maps to json
-            (= cls clojure.lang.PersistentArrayMap)
-            (.setObject statement
-                        position
-                        (cheshire/generate-string value))
+(extend-protocol SqlParam
 
-            ; if this is a vector/list, convert to a sql array
-            (sequential? value)
-            (.setArray statement position (to-sql-array statement value))
+  java.lang.String
+  (set-param [v s i]
+    (.setString s i v))
 
-            :default
-            (throw (Exception. "Parameter type not mapped!"))))))
+  java.lang.Integer
+  (set-param [v s i]
+    (.setInt s i v))
 
+  java.lang.Long
+  (set-param [v s i]
+    (.setLong s i v))
+
+  java.lang.Boolean
+  (set-param [v s i]
+    (.setBoolean s i v))
+
+  java.time.Instant
+  (set-param [v s i]
+    (.setTimestamp s i (Timestamp/from v)))
+
+  clojure.lang.PersistentArrayMap
+  (set-param [v s i]
+    (.setObject s i (cheshire/generate-string v)))
+
+  clojure.lang.PersistentVector
+  (set-param [v s i]
+    (.setArray s i (to-sql-array s v)))
+
+  clojure.lang.PersistentList
+  (set-param [v s i]
+    (.setArray s i (to-sql-array s v)))
+
+  java.lang.Object
+  (set-param [v s i]
+    (.setObject s i v))
+
+  nil
+  (set-param [v s i]
+    (.setObject s i nil)))
 
 
 
@@ -55,7 +76,7 @@
   (doall
     (map-indexed
       (fn [index value]
-        (set-parameter-value! statement (+ 1 index) value) )
+        (set-param value statement (+ 1 index)) )
 
       param-values)))
 

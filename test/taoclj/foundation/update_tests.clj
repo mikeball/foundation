@@ -19,6 +19,38 @@
   (is (= [{:id 2 :name "joe"}]
          (qry-> tests-db
                 (execute "SELECT id, name FROM update_records where id=2;"))))
+  )
+
+
+(deftest update-nulls
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS update_nulls;")
+    (execute cnx (str "CREATE TABLE update_nulls (id serial primary key not null, "
+                      "  t text, i integer, b boolean, tz timestamptz);"))
+    (execute cnx "INSERT INTO update_nulls (t,i,b,tz) values ('a',1,true,'2016-02-05');"))
+
+  (trx-> tests-db
+         (update :update-nulls {:t nil :i nil :b nil :tz nil} {:id 1}))
+
+  (is (= [{:id 1 :t nil :i nil :b nil :tz nil}]
+         (qry-> tests-db
+                (execute "SELECT * FROM update_nulls where id=1;"))))
+  )
+
+
+(deftest insert-nulls
+
+  (with-open [cnx (.getConnection tests-db)]
+    (execute cnx "DROP TABLE IF EXISTS insert_nulls;")
+    (execute cnx (str "CREATE TABLE insert_nulls (id serial primary key not null, "
+                      "  t text, i integer, b boolean, tz timestamptz);")))
+
+  (trx-> tests-db
+         (insert :insert-nulls {:t nil :i nil :b nil :tz nil}))
+
+  (is (= [{:id 1 :t nil :i nil :b nil :tz nil}]
+         (qry-> tests-db
+                (execute "SELECT * FROM insert_nulls;"))  ))
 
   )
 
