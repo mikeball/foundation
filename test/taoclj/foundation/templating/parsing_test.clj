@@ -41,5 +41,28 @@
        "a=:b and c in(:d);"
        ["a=" :b " and c in(" :d ");"]
 
+    ))
+
+
+
+(deftest sql-single-line-comments-are-ignored
+  (are [given expected]
+       (= expected (scan-sql given))
+
+       "--abc"       [""]
+       "abc --xyx"  ["abc "]
+
+       "abc --xyz \n efg"
+       ["abc " " efg"]
+
+    ))
+
+
+(deftest sql-multi-line-comments-are-ignored
+  (are [given expected]
+       (= expected (scan-sql given))
+
+       "abc /* xyz */ 123"
+       ["abc " " 123"]
 
     ))
