@@ -1,4 +1,4 @@
-(defproject org.taoclj/foundation "0.1.2"
+(defproject org.taoclj/foundation "0.1.3"
 
   :description "A clojure data access library for postgresql."
 
