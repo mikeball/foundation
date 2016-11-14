@@ -13,7 +13,7 @@ select p.id, p.name, c.name as category_name
 
 ## Define the query and reference the template file.
 ```clojure
-(def-query my-query
+(pg/def-query my-query
     {:file "path/to/my_query.sql"})
 
 ; now use the templated query
@@ -27,7 +27,7 @@ select p.id, p.name, c.name as category_name
 
 ## You can also specify a result-set transformation function
 ```clojure
-(def-query my-query2
+(pg/def-query my-query2
     {:file "path/to/my_query.sql"
      :transform (fn [rows]
                    (map (fn [row] (str (:name row) " - " (:category-name row)))
