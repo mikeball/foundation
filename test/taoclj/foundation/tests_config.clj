@@ -4,9 +4,9 @@
 
 (def tests-db
   (doto (PGDataSource.)
-        (.setHost     "localhost") ; todo move into
-        (.setPort     5432)
-        (.setDatabase "foundation_tests")
-        (.setUser     "foundation_tests_user")
-        (.setPassword "password")))
+        (.setServerName    "localhost") ; todo move into
+        (.setPort          5432)
+        (.setDatabaseName  "foundation_tests")
+        (.setUser          "foundation_tests_user")
+        (.setPassword      "password")))
 
